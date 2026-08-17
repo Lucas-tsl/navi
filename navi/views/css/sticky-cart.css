@@ -83,7 +83,7 @@
     width: 60px;
     height: 60px;
     object-fit: cover;
-    border-radius: 4px;
+    border-radius: var(--navi-radius-image);
 }
 
 .navi-sticky-info {
@@ -135,7 +135,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 4px;
+    border-radius: var(--navi-radius-button);
 }
 
 .navi-sticky-add-to-cart:hover:not(:disabled) {
@@ -193,7 +193,7 @@
 .navi-sticky-out-of-stock {
     width: 100%;
     padding: 12px 15px;
-    border-radius: 4px;
+    border-radius: var(--navi-radius-button);
     background: rgba(var(--navi-color-ink-rgb), 0.06);
     color: var(--navi-color-ink-soft);
     font-family: inherit;

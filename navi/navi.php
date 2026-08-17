@@ -18,11 +18,16 @@ class Navi extends Module
     const UPLOAD_SUBDIR = 'views/uploads';
     const MAX_UPLOAD_BYTES = 20971520; // 20 Mo
 
+    const DEFAULT_COLOR_ACCENT = '#2563eb';
+    const DEFAULT_COLOR_ACCENT_DEEP = '#1e40af';
+    const DEFAULT_RADIUS_BUTTON = '4';
+    const DEFAULT_RADIUS_IMAGE = '4';
+
     public function __construct()
     {
         $this->name = 'navi';
         $this->tab = 'front_office_features';
-        $this->version = '1.1.1';
+        $this->version = '1.2.0';
         $this->author = 'Troteseil Lucas';
         $this->need_instance = 0;
         $this->bootstrap = true;
@@ -33,8 +38,9 @@ class Navi extends Module
         $this->description = $this->l(
             "Hub d'engagement flottant : consentement cookies (Google Consent " .
             'Mode v2), accessibilité (taille du texte, contraste, curseur), ' .
-            'ajout au panier sticky et bulles vidéo "stories" sur les fiches ' .
-            'produit, pilotés depuis un bouton unique.'
+            'ajout au panier sticky, bulles vidéo "stories" sur les fiches ' .
+            'produit et mini-panier automatique, pilotés depuis un bouton ' .
+            'unique. Couleurs et arrondis personnalisables.'
         );
         $this->ps_versions_compliancy = ['min' => '1.7', 'max' => '8.99.99'];
 
@@ -110,6 +116,11 @@ class Navi extends Module
         Configuration::updateValue('NAVI_COOKIE_PRIVACY_URL', '');
         Configuration::updateValue('NAVI_COOKIE_LEGAL_URL', '');
         Configuration::updateValue('NAVI_COOKIE_LOGO_URL', $this->getDefaultLogoUrl());
+        Configuration::updateValue('NAVI_MINICART_ENABLED', '0');
+        Configuration::updateValue('NAVI_COLOR_ACCENT', self::DEFAULT_COLOR_ACCENT);
+        Configuration::updateValue('NAVI_COLOR_ACCENT_DEEP', self::DEFAULT_COLOR_ACCENT_DEEP);
+        Configuration::updateValue('NAVI_RADIUS_BUTTON', self::DEFAULT_RADIUS_BUTTON);
+        Configuration::updateValue('NAVI_RADIUS_IMAGE', self::DEFAULT_RADIUS_IMAGE);
 
         return $ok;
     }
@@ -144,7 +155,12 @@ class Navi extends Module
             && Configuration::deleteByName('NAVI_COOKIE_TEXT')
             && Configuration::deleteByName('NAVI_COOKIE_PRIVACY_URL')
             && Configuration::deleteByName('NAVI_COOKIE_LEGAL_URL')
-            && Configuration::deleteByName('NAVI_COOKIE_LOGO_URL');
+            && Configuration::deleteByName('NAVI_COOKIE_LOGO_URL')
+            && Configuration::deleteByName('NAVI_MINICART_ENABLED')
+            && Configuration::deleteByName('NAVI_COLOR_ACCENT')
+            && Configuration::deleteByName('NAVI_COLOR_ACCENT_DEEP')
+            && Configuration::deleteByName('NAVI_RADIUS_BUTTON')
+            && Configuration::deleteByName('NAVI_RADIUS_IMAGE');
     }
 
     /**
@@ -176,6 +192,19 @@ class Navi extends Module
         return $idCms ? Context::getContext()->link->getCMSLink($idCms) : '';
     }
 
+    /**
+     * N'accepte qu'un hex CSS valide (#rgb ou #rrggbb) — ces valeurs sont
+     * réinjectées telles quelles dans un bloc <style> (voir
+     * hookDisplayHeader ci-dessous), jamais de valeur non validée dans du
+     * CSS/HTML généré côté serveur.
+     */
+    private function sanitizeHexColor($value, $default)
+    {
+        $value = trim((string) $value);
+
+        return preg_match('/^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$/', $value) ? $value : $default;
+    }
+
     private function getDefaultCookieText()
     {
         return $this->l(
@@ -185,8 +214,10 @@ class Navi extends Module
     }
 
     /**
-     * Réglages back-office (Modules > Navi > Configurer) : texte de la
-     * bannière cookie et liens légaux. La gestion des stories se fait
+     * Réglages back-office (Modules > Navi > Configurer), organisés en
+     * sections distinctes (une par fonctionnalité) plutôt qu'un seul
+     * formulaire plat : bannière cookies, mini-panier automatique,
+     * apparence (couleurs, arrondis). La gestion des stories se fait
      * directement sur chaque fiche produit (onglet Navi), pas ici.
      */
     public function getContent()
@@ -200,6 +231,11 @@ class Navi extends Module
             Configuration::updateValue('NAVI_COOKIE_PRIVACY_URL', (string) Tools::getValue('NAVI_COOKIE_PRIVACY_URL'));
             Configuration::updateValue('NAVI_COOKIE_LEGAL_URL', (string) Tools::getValue('NAVI_COOKIE_LEGAL_URL'));
             Configuration::updateValue('NAVI_COOKIE_LOGO_URL', (string) Tools::getValue('NAVI_COOKIE_LOGO_URL'));
+            Configuration::updateValue('NAVI_MINICART_ENABLED', (int) Tools::getValue('NAVI_MINICART_ENABLED'));
+            Configuration::updateValue('NAVI_COLOR_ACCENT', $this->sanitizeHexColor(Tools::getValue('NAVI_COLOR_ACCENT'), self::DEFAULT_COLOR_ACCENT));
+            Configuration::updateValue('NAVI_COLOR_ACCENT_DEEP', $this->sanitizeHexColor(Tools::getValue('NAVI_COLOR_ACCENT_DEEP'), self::DEFAULT_COLOR_ACCENT_DEEP));
+            Configuration::updateValue('NAVI_RADIUS_BUTTON', max(0, (int) Tools::getValue('NAVI_RADIUS_BUTTON')));
+            Configuration::updateValue('NAVI_RADIUS_IMAGE', max(0, (int) Tools::getValue('NAVI_RADIUS_IMAGE')));
             $output .= $this->displayConfirmation($this->l('Réglages enregistrés.'));
         }
 
@@ -244,6 +280,71 @@ class Navi extends Module
             ],
         ];
 
+        $miniCartForm = [
+            'form' => [
+                'legend' => [
+                    'title' => $this->l('Mini-panier automatique'),
+                    'icon' => 'icon-shopping-cart',
+                ],
+                'input' => [
+                    [
+                        'type' => 'switch',
+                        'label' => $this->l('Ouverture automatique du mini-panier'),
+                        'name' => 'NAVI_MINICART_ENABLED',
+                        'is_bool' => true,
+                        'desc' => $this->l("Ouvre automatiquement le mini-panier après un ajout au panier, et le referme tout seul après quelques secondes. Suppose le markup du thème PrestaShop \"Classic\" (#_desktop_cart) — désactivé par défaut, à activer une fois vérifié que ça fonctionne sur votre thème."),
+                        'values' => [
+                            ['id' => 'minicart_on', 'value' => 1, 'label' => $this->l('Activé')],
+                            ['id' => 'minicart_off', 'value' => 0, 'label' => $this->l('Désactivé')],
+                        ],
+                    ],
+                ],
+                'submit' => [
+                    'title' => $this->l('Enregistrer'),
+                ],
+            ],
+        ];
+
+        $appearanceForm = [
+            'form' => [
+                'legend' => [
+                    'title' => $this->l('Apparence'),
+                    'icon' => 'icon-paint-brush',
+                ],
+                'input' => [
+                    [
+                        'type' => 'color',
+                        'label' => $this->l("Couleur d'accent"),
+                        'name' => 'NAVI_COLOR_ACCENT',
+                        'desc' => $this->l('Couleur principale des boutons (bannière cookies, panier sticky...).'),
+                    ],
+                    [
+                        'type' => 'color',
+                        'label' => $this->l("Couleur d'accent (survol / texte)"),
+                        'name' => 'NAVI_COLOR_ACCENT_DEEP',
+                        'desc' => $this->l('Variante plus sombre, utilisée au survol des boutons et comme couleur de texte sur fond clair (contraste).'),
+                    ],
+                    [
+                        'type' => 'text',
+                        'label' => $this->l('Arrondi des boutons (px)'),
+                        'name' => 'NAVI_RADIUS_BUTTON',
+                        'suffix' => 'px',
+                        'desc' => $this->l('0 = angles droits. Boutons concernés : bannière cookies, panier sticky.'),
+                    ],
+                    [
+                        'type' => 'text',
+                        'label' => $this->l("Arrondi de l'image produit (px)"),
+                        'name' => 'NAVI_RADIUS_IMAGE',
+                        'suffix' => 'px',
+                        'desc' => $this->l('Miniature produit affichée dans le panier sticky.'),
+                    ],
+                ],
+                'submit' => [
+                    'title' => $this->l('Enregistrer'),
+                ],
+            ],
+        ];
+
         $helper = new HelperForm();
         $helper->show_toolbar = false;
         $helper->table = $this->table;
@@ -260,9 +361,14 @@ class Navi extends Module
             'NAVI_COOKIE_TEXT' => Configuration::get('NAVI_COOKIE_TEXT'),
             'NAVI_COOKIE_PRIVACY_URL' => Configuration::get('NAVI_COOKIE_PRIVACY_URL'),
             'NAVI_COOKIE_LEGAL_URL' => Configuration::get('NAVI_COOKIE_LEGAL_URL'),
+            'NAVI_MINICART_ENABLED' => (bool) Configuration::get('NAVI_MINICART_ENABLED'),
+            'NAVI_COLOR_ACCENT' => Configuration::get('NAVI_COLOR_ACCENT') ?: self::DEFAULT_COLOR_ACCENT,
+            'NAVI_COLOR_ACCENT_DEEP' => Configuration::get('NAVI_COLOR_ACCENT_DEEP') ?: self::DEFAULT_COLOR_ACCENT_DEEP,
+            'NAVI_RADIUS_BUTTON' => Configuration::get('NAVI_RADIUS_BUTTON') !== false ? Configuration::get('NAVI_RADIUS_BUTTON') : self::DEFAULT_RADIUS_BUTTON,
+            'NAVI_RADIUS_IMAGE' => Configuration::get('NAVI_RADIUS_IMAGE') !== false ? Configuration::get('NAVI_RADIUS_IMAGE') : self::DEFAULT_RADIUS_IMAGE,
         ];
 
-        return $helper->generateForm([$fieldsForm]);
+        return $helper->generateForm([$fieldsForm, $miniCartForm, $appearanceForm]);
     }
 
     /**
@@ -300,7 +406,30 @@ class Navi extends Module
                 "analytics_storage": "' . ($statsGranted ? 'granted' : 'denied') . '",
                 "wait_for_update": ' . (int) $waitForUpdate . '
             });
-        </script>';
+        </script>' . $this->getAppearanceStyleTag();
+    }
+
+    /**
+     * Couleurs/arrondis configurés depuis Modules > Navi > Configurer >
+     * Apparence, réinjectés en variables CSS. `html:root` (pas `:root`
+     * seul) : specificité (0,1,1) contre (0,1,0) pour `:root` — garantit
+     * que ce bloc l'emporte sur les valeurs par défaut de core.css quel
+     * que soit l'ordre relatif des deux dans le <head> final (non garanti
+     * par PrestaShop/le thème).
+     */
+    private function getAppearanceStyleTag()
+    {
+        $accent = $this->sanitizeHexColor(Configuration::get('NAVI_COLOR_ACCENT'), self::DEFAULT_COLOR_ACCENT);
+        $accentDeep = $this->sanitizeHexColor(Configuration::get('NAVI_COLOR_ACCENT_DEEP'), self::DEFAULT_COLOR_ACCENT_DEEP);
+        $radiusButton = max(0, (int) (Configuration::get('NAVI_RADIUS_BUTTON') !== false ? Configuration::get('NAVI_RADIUS_BUTTON') : self::DEFAULT_RADIUS_BUTTON));
+        $radiusImage = max(0, (int) (Configuration::get('NAVI_RADIUS_IMAGE') !== false ? Configuration::get('NAVI_RADIUS_IMAGE') : self::DEFAULT_RADIUS_IMAGE));
+
+        return '<style>html:root{'
+            . '--navi-color-accent:' . $accent . ';'
+            . '--navi-color-accent-deep:' . $accentDeep . ';'
+            . '--navi-radius-button:' . $radiusButton . 'px;'
+            . '--navi-radius-image:' . $radiusImage . 'px;'
+            . '}</style>';
     }
 
     /**
@@ -340,6 +469,19 @@ class Navi extends Module
             'modules/' . $this->name . '/views/js/accessibility.js',
             ['position' => 'bottom', 'priority' => 200]
         );
+
+        // Mini-panier automatique : sur toutes les pages, pas seulement la
+        // fiche produit — l'ajout au panier peut se faire depuis une liste
+        // de catégorie, la page panier (cross-sell), etc. Non chargé du
+        // tout si désactivé dans Configurer (désactivé par défaut) plutôt
+        // qu'un simple flag JS ignoré.
+        if (Configuration::get('NAVI_MINICART_ENABLED')) {
+            $this->context->controller->registerJavascript(
+                'navi-mini-cart',
+                'modules/' . $this->name . '/views/js/mini-cart.js',
+                ['position' => 'bottom', 'priority' => 200]
+            );
+        }
 
         $stories = [];
 

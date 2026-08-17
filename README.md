@@ -19,6 +19,9 @@ widgets indépendants.
   d'administration sur la fiche produit (jusqu'à 4 stories, vidéo YouTube
   ou upload MP4), rendu front (panneau desktop + plein écran mobile).
   Aucune dépendance à un module tiers.
+- ✅ Mini-panier automatique (optionnel, désactivé par défaut).
+- ✅ Apparence personnalisable depuis le Back Office (couleur d'accent,
+  arrondi des boutons, arrondi de l'image produit).
 
 ## Installation
 
@@ -42,7 +45,7 @@ navi/
     ├── css/       core.css, cookie-consent.css, accessibility.css,
     │              sticky-cart.css, stories.css
     ├── js/        core.js, cookie-consent.js, accessibility.js,
-    │              sticky-cart.js, stories.js
+    │              sticky-cart.js, stories.js, mini-cart.js
     ├── uploads/                     # Vidéos MP4 uploadées (stories), .htaccess durci
     └── templates/
         ├── hook/footer.tpl          # Coquille du bouton flottant + panneaux

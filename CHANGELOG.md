@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.2.0
+
+- **Mini-panier automatique** : ouverture automatique du mini-panier après
+  un ajout au panier, fermeture automatique après quelques secondes.
+  Repris de l'ancien module interne `hub-phy` et généricisé (sélecteurs du
+  thème PrestaShop "Classic"). Désactivé par défaut, activable dans
+  *Configurer > Mini-panier automatique*.
+- **Apparence personnalisable** : nouvelle section *Configurer > Apparence*
+  — couleur d'accent (+ variante foncée pour le survol/contraste), arrondi
+  des boutons, arrondi de l'image produit du panier sticky. Appliqué via
+  variables CSS injectées en tête de page, sans avoir à toucher aux
+  fichiers du module.
+- Réglages back-office réorganisés en 3 sections distinctes (Bannière
+  cookies / Mini-panier automatique / Apparence) plutôt qu'un seul
+  formulaire.
+- Bulles stories : espacement augmenté, alignées à droite de la rangée.
+
 ## 1.1.1
 
 Durcissement de `install()` — observé en conditions réelles (installation

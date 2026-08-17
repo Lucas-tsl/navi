@@ -15,7 +15,8 @@
 .navi-story-row {
     display: flex;
     flex-wrap: wrap;
-    gap: 14px;
+    justify-content: flex-end;
+    gap: 24px;
     margin: 16px 0;
 }
 
