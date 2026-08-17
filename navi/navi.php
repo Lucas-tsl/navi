@@ -62,7 +62,7 @@ class Navi extends Module
     {
         $this->name = 'navi';
         $this->tab = 'front_office_features';
-        $this->version = '1.4.0';
+        $this->version = '1.4.1';
         $this->author = 'Troteseil Lucas';
         $this->need_instance = 0;
         $this->bootstrap = true;

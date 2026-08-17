@@ -1,12 +1,22 @@
 # Changelog
 
+## 1.4.1
+
+Retour en arrière partiel sur le correctif d'affichage de la 1.4.0 :
+contraindre `.navi-story-phone` par largeur ET hauteur
+(`max-height: min(60vh, 420px)`) déformait/rétrécissait le mockup au lieu
+de simplement le repositionner — format cassé sur laptop, pire que le
+problème d'origine. `.navi-story-phone` revient à son format d'origine
+(largeur + ratio 9:18.5 uniquement). Le panneau lui-même remonte de 25px
+supplémentaires (`bottom: 45px` au lieu des 20px hérités) quand une story
+est affichée, pour laisser plus de marge sous le mockup sans toucher à
+ses proportions.
+
 ## 1.4.0
 
-- **Stories** : correctif d'affichage — le mockup de téléphone pouvait être
-  coupé en bas du panneau sur les écrans de hauteur réduite (laptop,
-  fenêtre non maximisée). Contraint désormais par largeur ET hauteur
-  disponibles (`max-height: min(60vh, 420px)`), plus besoin de scroller
-  pour voir le bas du mockup.
+- **Stories** : tentative de correctif d'affichage (remplacée en 1.4.1) —
+  le mockup de téléphone pouvait être coupé en bas du panneau sur les
+  écrans de hauteur réduite (laptop, fenêtre non maximisée).
 - **Stories** : couleur du fond du mockup téléphone, couleur de la croix
   de fermeture, couleur du fond de son bouton, couleur du fond plein écran
   (mobile), toutes personnalisables depuis *Configurer > Stories*. Note :

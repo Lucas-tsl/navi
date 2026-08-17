@@ -138,12 +138,6 @@
     position: relative;
     width: 100%;
     max-width: 210px;
-    /* max-height en plus du ratio : sans ça, sur un écran de hauteur
-       réduite (laptop, fenêtre non maximisée), le mockup pouvait dépasser
-       la zone visible du panneau et être coupé en bas — min() laisse le
-       navigateur choisir la plus petite des deux contraintes (largeur OU
-       hauteur disponible) tout en gardant le ratio 9:18.5. */
-    max-height: min(60vh, 420px);
     aspect-ratio: 9 / 18.5;
     flex-shrink: 0;
     background: var(--navi-story-phone-bg);
