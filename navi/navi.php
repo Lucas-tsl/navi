@@ -11,13 +11,10 @@ if (!defined('_PS_VERSION_')) {
     exit;
 }
 
+require_once dirname(__FILE__) . '/classes/NaviStoryManager.php';
+
 class Navi extends Module
 {
-    const STORIES_TABLE = 'navi_story';
-    const STORY_LIMIT = 4;
-    const UPLOAD_SUBDIR = 'views/uploads';
-    const MAX_UPLOAD_BYTES = 20971520; // 20 Mo
-
     const DEFAULT_COLOR_ACCENT = '#2563eb';
     const DEFAULT_COLOR_ACCENT_DEEP = '#1e40af';
     const DEFAULT_RADIUS_BUTTON = '4';
@@ -64,16 +61,21 @@ class Navi extends Module
         ],
     ];
 
+    /** @var NaviStoryManager */
+    public $story;
+
     public function __construct()
     {
         $this->name = 'navi';
         $this->tab = 'front_office_features';
-        $this->version = '1.7.1';
+        $this->version = '1.7.2';
         $this->author = 'Troteseil Lucas';
         $this->need_instance = 0;
         $this->bootstrap = true;
 
         parent::__construct();
+
+        $this->story = new NaviStoryManager($this);
 
         $this->displayName = $this->l('Navi');
         $this->description = $this->l(
@@ -143,12 +145,12 @@ class Navi extends Module
             }
         }
 
-        if (!$this->installStoriesTable()) {
+        if (!$this->story->installTable()) {
             $this->_errors[] = $this->l('Navi : échec de la création de la table des stories.');
             $ok = false;
         }
 
-        if (!$this->installUploadDir()) {
+        if (!$this->story->installUploadDir()) {
             $this->_errors[] = $this->l("Navi : échec de la création du dossier d'upload.");
             $ok = false;
         }
@@ -197,18 +199,18 @@ class Navi extends Module
             }
         }
 
-        if (!Db::getInstance()->executeS('SHOW TABLES LIKE \'' . _DB_PREFIX_ . self::STORIES_TABLE . '\'')) {
-            $this->installStoriesTable();
+        if (!Db::getInstance()->executeS('SHOW TABLES LIKE \'' . _DB_PREFIX_ . NaviStoryManager::STORIES_TABLE . '\'')) {
+            $this->story->installTable();
         }
 
-        $this->installUploadDir();
+        $this->story->installUploadDir();
     }
 
     public function uninstall()
     {
         $ok = parent::uninstall()
-            && $this->uninstallStoriesTable()
-            && $this->uninstallUploadDir()
+            && $this->story->uninstallTable()
+            && $this->story->uninstallUploadDir()
             && Configuration::deleteByName('NAVI_COOKIE_TEXT')
             && Configuration::deleteByName('NAVI_COOKIE_PRIVACY_URL')
             && Configuration::deleteByName('NAVI_COOKIE_LEGAL_URL')
@@ -1021,7 +1023,7 @@ class Navi extends Module
 
             $idProduct = $this->getCurrentProductId();
             if ($idProduct) {
-                $stories = $this->getStoriesForProduct($idProduct);
+                $stories = $this->story->getStoriesForProduct($idProduct);
             }
 
             if (!empty($stories)) {
@@ -1205,270 +1207,23 @@ class Navi extends Module
     // ================================================================
     // Stories — gestion native des bulles vidéo produit.
     //
-    // Absorbe la fonctionnalité auparavant déléguée au module tiers
-    // lstvideostory, en corrigeant au passage les points trouvés lors de
-    // l'analyse de ce module : sauvegarde exposée sur un contrôleur front
-    // public non protégé par un jeton vérifié (ici : aucun contrôleur
-    // front du tout, la sauvegarde ne passe QUE par le formulaire produit
-    // réel du Back Office, donc déjà couverte par la session employé et le
-    // jeton CSRF que PrestaShop applique lui-même) ; validation d'upload
-    // dupliquée à plusieurs endroits (ici centralisée) ; aucune limite de
-    // taille réellement appliquée (ici : MAX_UPLOAD_BYTES) ; aucun
-    // nettoyage des fichiers uploadés à la désinstallation (ici :
-    // uninstallUploadDir()).
+    // La couche données/upload (table navi_story, validation MP4, YouTube,
+    // sauvegarde produit) vit dans classes/NaviStoryManager.php ($this->story)
+    // — seuls les hooks PrestaShop, qui doivent rester des méthodes de
+    // cette classe, restent ici et délèguent.
     // ================================================================
-
-    private function installStoriesTable()
-    {
-        return Db::getInstance()->execute(
-            'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . self::STORIES_TABLE . '` (
-                `id_navi_story` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-                `id_product` INT UNSIGNED NOT NULL,
-                `id_shop` INT UNSIGNED NOT NULL,
-                `story_index` TINYINT UNSIGNED NOT NULL,
-                `youtube` VARCHAR(32) NOT NULL,
-                `preview` VARCHAR(255) NOT NULL,
-                `label` VARCHAR(128) NOT NULL,
-                `date_add` DATETIME NOT NULL,
-                `date_upd` DATETIME NOT NULL,
-                PRIMARY KEY (`id_navi_story`),
-                UNIQUE KEY `shop_product_story` (`id_shop`, `id_product`, `story_index`),
-                KEY `id_product` (`id_product`)
-            ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8mb4'
-        );
-    }
-
-    private function uninstallStoriesTable()
-    {
-        return Db::getInstance()->execute('DROP TABLE IF EXISTS `' . _DB_PREFIX_ . self::STORIES_TABLE . '`');
-    }
-
-    private function getUploadDirectory()
-    {
-        return _PS_MODULE_DIR_ . $this->name . '/' . self::UPLOAD_SUBDIR . '/';
-    }
-
-    private function installUploadDir()
-    {
-        $dir = $this->getUploadDirectory();
-        if (!is_dir($dir) && !@mkdir($dir, 0755, true)) {
-            return false;
-        }
-
-        return true;
-    }
-
-    /**
-     * Contrairement à lstvideostory, qui ne supprimait que sa table à la
-     * désinstallation : les fichiers vidéo uploadés (potentiellement
-     * volumineux, et des données du marchand) doivent partir avec le
-     * module, pas rester orphelins sur le disque indéfiniment.
-     */
-    private function uninstallUploadDir()
-    {
-        $dir = $this->getUploadDirectory();
-        if (!is_dir($dir)) {
-            return true;
-        }
-
-        foreach (glob($dir . '*.mp4') as $file) {
-            @unlink($file);
-        }
-
-        return true;
-    }
-
-    /**
-     * Récupère les stories du produit pour la boutique courante — scoping
-     * par id_shop dès la conception (contrairement à lstvideostory, qui
-     * n'avait pas cette colonne et mélangeait les données entre boutiques
-     * d'un même multiboutique).
-     */
-    public function getStoriesForProduct($idProduct, $idShop = null)
-    {
-        if ($idShop === null) {
-            $idShop = (int) $this->context->shop->id;
-        }
-
-        return Db::getInstance()->executeS(
-            'SELECT * FROM `' . _DB_PREFIX_ . self::STORIES_TABLE . '`
-             WHERE `id_product` = ' . (int) $idProduct . '
-             AND `id_shop` = ' . (int) $idShop . '
-             ORDER BY `story_index` ASC'
-        );
-    }
-
-    private function deleteStoriesForProduct($idProduct, $idShop)
-    {
-        return Db::getInstance()->execute(
-            'DELETE FROM `' . _DB_PREFIX_ . self::STORIES_TABLE . '`
-             WHERE `id_product` = ' . (int) $idProduct . '
-             AND `id_shop` = ' . (int) $idShop
-        );
-    }
-
-    /**
-     * Accepte une URL YouTube complète (watch?v=, youtu.be/, /shorts/) ou
-     * un identifiant brut de 11 caractères déjà saisi tel quel.
-     */
-    private function extractYoutubeId($input)
-    {
-        $input = trim((string) $input);
-        if ($input === '') {
-            return '';
-        }
-
-        if (preg_match('#(?:youtube\.com/(?:watch\?v=|shorts/)|youtu\.be/)([A-Za-z0-9_-]{11})#', $input, $m)) {
-            return $m[1];
-        }
-
-        if (preg_match('/^[A-Za-z0-9_-]{11}$/', $input)) {
-            return $input;
-        }
-
-        return '';
-    }
-
-    /**
-     * Validation centralisée (contrairement à lstvideostory, dupliquée à 3
-     * endroits) : extension + MIME stricts (pas de repli sur
-     * application/octet-stream, trop permissif), taille plafonnée.
-     * Retourne un message d'erreur, ou '' si le fichier est accepté.
-     */
-    private function validateMp4Upload(array $file)
-    {
-        if (!isset($file['error']) || $file['error'] !== UPLOAD_ERR_OK) {
-            return $this->l('Erreur lors du transfert du fichier.');
-        }
-
-        if ($file['size'] > self::MAX_UPLOAD_BYTES) {
-            return sprintf($this->l('Le fichier dépasse la taille maximale autorisée (%d Mo).'), self::MAX_UPLOAD_BYTES / 1048576);
-        }
-
-        $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-        if ($extension !== 'mp4') {
-            return $this->l('Seuls les fichiers .mp4 sont acceptés.');
-        }
-
-        if (function_exists('finfo_open')) {
-            $finfo = finfo_open(FILEINFO_MIME_TYPE);
-            $mime = finfo_file($finfo, $file['tmp_name']);
-            finfo_close($finfo);
-            if ($mime !== 'video/mp4') {
-                return $this->l('Le fichier ne semble pas être une vidéo MP4 valide.');
-            }
-        }
-
-        return '';
-    }
-
-    /**
-     * Déplace un upload validé vers le dossier du module et retourne son
-     * URL publique, ou null si aucun fichier valide n'a été soumis pour cet
-     * index (absence de fichier n'est pas une erreur : l'admin peut avoir
-     * laissé ce champ vide volontairement).
-     */
-    private function handleUploadedPreview($index, &$errors)
-    {
-        $field = 'navi_story_preview_file_' . (int) $index;
-        if (!isset($_FILES[$field]) || $_FILES[$field]['error'] === UPLOAD_ERR_NO_FILE) {
-            return null;
-        }
-
-        $file = $_FILES[$field];
-        $error = $this->validateMp4Upload($file);
-        if ($error !== '') {
-            $errors[] = sprintf('#%d — %s', $index, $error);
-
-            return null;
-        }
-
-        $filename = 'story_' . (int) $index . '_' . time() . '_' . bin2hex(random_bytes(4)) . '.mp4';
-        $destination = $this->getUploadDirectory() . $filename;
-
-        if (!move_uploaded_file($file['tmp_name'], $destination)) {
-            $errors[] = sprintf('#%d — %s', $index, $this->l("Échec de l'enregistrement du fichier."));
-
-            return null;
-        }
-
-        return $this->_path . self::UPLOAD_SUBDIR . '/' . $filename;
-    }
-
-    /**
-     * Point d'entrée UNIQUE de sauvegarde, appelé uniquement depuis un
-     * enregistrement produit réel (voir hookActionObjectProduct*After
-     * ci-dessous) — jamais depuis un contrôleur front public. Un flag
-     * statique évite un double traitement si plusieurs hooks du cycle de
-     * sauvegarde produit se déclenchaient pour la même requête (le bug
-     * inverse observé sur lstvideostory : un upload ne peut être déplacé
-     * qu'une seule fois, un second passage sur le même $_FILES échouerait
-     * silencieusement et effacerait la story qui venait d'être créée).
-     */
-    private static $storiesSavedThisRequest = [];
-
-    public function handleProductSave($idProduct)
-    {
-        $idProduct = (int) $idProduct;
-        if (!$idProduct || !Tools::isSubmit('navi_story_submitted')) {
-            return;
-        }
-
-        $idShop = (int) $this->context->shop->id;
-        $requestKey = $idShop . ':' . $idProduct;
-        if (isset(self::$storiesSavedThisRequest[$requestKey])) {
-            return;
-        }
-        self::$storiesSavedThisRequest[$requestKey] = true;
-
-        $errors = [];
-        $rows = [];
-        $now = date('Y-m-d H:i:s');
-
-        for ($index = 1; $index <= self::STORY_LIMIT; $index++) {
-            $youtube = $this->extractYoutubeId(Tools::getValue('navi_story_youtube_' . $index));
-            if ($youtube === '') {
-                continue; // slot vide : pas de story à cet emplacement.
-            }
-
-            $uploadedUrl = $this->handleUploadedPreview($index, $errors);
-            $preview = $uploadedUrl
-                ?: (string) Tools::getValue('navi_story_preview_' . $index)
-                ?: 'https://img.youtube.com/vi/' . $youtube . '/maxresdefault.jpg';
-
-            $rows[] = [
-                'id_product' => $idProduct,
-                'id_shop' => $idShop,
-                'story_index' => $index,
-                'youtube' => pSQL($youtube),
-                'preview' => pSQL($preview),
-                'label' => pSQL((string) Tools::getValue('navi_story_label_' . $index)),
-                'date_add' => $now,
-                'date_upd' => $now,
-            ];
-        }
-
-        $this->deleteStoriesForProduct($idProduct, $idShop);
-        foreach ($rows as $row) {
-            Db::getInstance()->insert(self::STORIES_TABLE, $row);
-        }
-
-        if (!empty($errors)) {
-            $this->context->controller->errors[] = $this->l('Stories Navi : certains fichiers ont été ignorés.') . ' ' . implode(' ', $errors);
-        }
-    }
 
     public function hookActionObjectProductAddAfter($params)
     {
         if (isset($params['object']) && $params['object'] instanceof Product) {
-            $this->handleProductSave($params['object']->id);
+            $this->story->handleProductSave($params['object']->id);
         }
     }
 
     public function hookActionObjectProductUpdateAfter($params)
     {
         if (isset($params['object']) && $params['object'] instanceof Product) {
-            $this->handleProductSave($params['object']->id);
+            $this->story->handleProductSave($params['object']->id);
         }
     }
 
@@ -1476,7 +1231,7 @@ class Navi extends Module
     {
         if (isset($params['object']) && $params['object'] instanceof Product) {
             Db::getInstance()->execute(
-                'DELETE FROM `' . _DB_PREFIX_ . self::STORIES_TABLE . '` WHERE `id_product` = ' . (int) $params['object']->id
+                'DELETE FROM `' . _DB_PREFIX_ . NaviStoryManager::STORIES_TABLE . '` WHERE `id_product` = ' . (int) $params['object']->id
             );
         }
     }
@@ -1494,12 +1249,12 @@ class Navi extends Module
         }
 
         $existing = [];
-        foreach ($this->getStoriesForProduct($idProduct) as $row) {
+        foreach ($this->story->getStoriesForProduct($idProduct) as $row) {
             $existing[(int) $row['story_index']] = $row;
         }
 
         $slots = [];
-        for ($index = 1; $index <= self::STORY_LIMIT; $index++) {
+        for ($index = 1; $index <= NaviStoryManager::STORY_LIMIT; $index++) {
             $youtube = $existing[$index]['youtube'] ?? '';
             $slots[] = [
                 'index' => $index,
@@ -1512,8 +1267,8 @@ class Navi extends Module
 
         $this->context->smarty->assign([
             'navi_story_slots' => $slots,
-            'navi_story_max_mb' => self::MAX_UPLOAD_BYTES / 1048576,
-            'navi_story_max_bytes' => self::MAX_UPLOAD_BYTES,
+            'navi_story_max_mb' => NaviStoryManager::MAX_UPLOAD_BYTES / 1048576,
+            'navi_story_max_bytes' => NaviStoryManager::MAX_UPLOAD_BYTES,
         ]);
 
         return $this->fetch('module:' . $this->name . '/views/templates/admin/story-fields.tpl');
@@ -1535,7 +1290,7 @@ class Navi extends Module
             return '';
         }
 
-        $stories = $this->getStoriesForProduct($idProduct);
+        $stories = $this->story->getStoriesForProduct($idProduct);
         if (empty($stories)) {
             return '';
         }

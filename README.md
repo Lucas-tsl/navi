@@ -53,8 +53,10 @@ Compatible PrestaShop 1.7 → 8.x (voir `ps_versions_compliancy` dans
 
 ```
 navi/
-├── navi.php                        # Hooks, config back-office, gestion des stories
+├── navi.php                        # Hooks, config back-office
 ├── config.xml
+├── classes/
+│   └── NaviStoryManager.php        # Table navi_story, upload/validation MP4, YouTube
 └── views/
     ├── css/       core.css, cookie-consent.css, accessibility.css,
     │              sticky-cart.css, stories.css
