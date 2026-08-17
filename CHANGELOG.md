@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.7.2
+
+- Refactor interne : la couche données/upload des stories (table
+  `navi_story`, validation MP4, extraction d'identifiant YouTube,
+  sauvegarde produit) déménage de `navi.php` (qui approchait 1600 lignes)
+  vers `classes/NaviStoryManager.php` (`$this->story`) — comportement
+  inchangé, `navi.php` passe à ~1310 lignes.
+- Corrige un bug introduit puis rattrapé pendant ce refactor avant tout
+  déploiement : `Module::$context` et `Module::$_path` sont protégées,
+  inaccessibles depuis une classe externe même en lui passant l'instance
+  du module — la nouvelle classe utilise `Context::getContext()` et
+  reconstruit l'URL du dossier d'upload plutôt que d'accéder à ces
+  propriétés directement.
+
 ## 1.7.1
 
 - Logo du module (`navi/logo.png`, 32×32) — affiché dans le Gestionnaire
