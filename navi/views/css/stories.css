@@ -1,0 +1,301 @@
+/**
+ * Panneau "Story", affiché comme contenu du même objet que le bouton
+ * engrenage (voir views/js/core.js, views/css/core.css) : mockup de
+ * téléphone contenant l'iframe YouTube de la bulle cliquée.
+ *
+ * Le mockup de téléphone est dessiné entièrement en CSS (bezel + encoche),
+ * pas une image — évite toute dépendance à un asset externe (droits/licence)
+ * et n'a pas besoin d'être remesuré si les proportions changent.
+ */
+
+.navi-story-panel {
+    width: 100%;
+    height: 100%;
+    flex-direction: column;
+    position: relative;
+}
+
+.navi-story-close {
+    position: absolute;
+    top: 8px;
+    right: 14px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(0, 0, 0, 0.55);
+    color: #fff;
+    font-size: 0.875rem;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    z-index: 4;
+    flex-shrink: 0;
+}
+
+.navi-story-close:hover {
+    background: rgba(0, 0, 0, 0.75);
+    border-color: transparent;
+    box-shadow: none;
+    color: #fff;
+}
+
+.navi-story-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden auto;
+    padding: 20px 14px 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Taille fixe à tous les écrans desktop/laptop/tablette (au-delà de 480px,
+   voir isMobile() dans views/js/stories.js — en dessous, mode plein écran
+   séparé, voir .navi-story-fullscreen plus bas). */
+.navi-story-phone {
+    position: relative;
+    width: 100%;
+    max-width: 210px;
+    aspect-ratio: 9 / 18.5;
+    flex-shrink: 0;
+    background: #111;
+    border-radius: 34px;
+    padding: 10px;
+    box-sizing: border-box;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25), inset 0 0 0 2px rgba(255, 255, 255, 0.06);
+}
+
+.navi-story-phone-screen {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    border-radius: 24px;
+    background: #000;
+}
+
+/* Encoche du mockup — purement décorative, pointer-events: none pour ne
+   jamais intercepter de clic destiné à la vidéo en dessous. */
+.navi-story-phone-screen::before {
+    content: '';
+    position: absolute;
+    top: 6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 34%;
+    height: 16px;
+    background: #111;
+    border-radius: 10px;
+    z-index: 3;
+    pointer-events: none;
+}
+
+/* Recadrage façon `object-fit: cover` : la zone d'écran est plus étroite
+   qu'une vidéo au format natif 9:16, donc l'iframe est dimensionnée sur la
+   HAUTEUR du conteneur puis sa largeur dérivée du ratio 9:16 (donc plus
+   large que le conteneur), centrée horizontalement et débordant sur les
+   côtés — équivalent d'un `object-fit: cover` (non supporté nativement sur
+   une iframe), `overflow: hidden` du parent masque le débordement latéral.
+   Interaction autorisée (`pointer-events: auto`) : permet de mettre en
+   pause d'un tap et relancer la vidéo si elle est terminée (YouTube affiche
+   un bouton de reprise à la fin même avec `controls=0`). Les zones
+   `.navi-story-guard-top/bottom` (voir plus bas) absorbent le tap sur le
+   bandeau titre/chaîne et le filigrane "Shorts" plutôt que de laisser
+   l'iframe y réagir, tout en laissant le centre de la vidéo cliquable pour
+   pause/lecture. */
+.navi-story-phone-screen iframe {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    height: 100%;
+    width: auto;
+    aspect-ratio: 9 / 16;
+    transform: translateX(-50%);
+    border: 0;
+    display: block;
+    pointer-events: auto;
+}
+
+.navi-story-guard-top,
+.navi-story-guard-bottom {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    z-index: 2;
+    background: transparent;
+}
+
+.navi-story-guard-top {
+    top: 0;
+    height: 14%;
+}
+
+.navi-story-guard-bottom {
+    bottom: 0;
+    height: 10%;
+}
+
+@keyframes navi-story-fade {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.navi-fab[data-detail="stories"] #navi-story-panel {
+    animation: navi-story-fade 0.3s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .navi-fab[data-detail="stories"] #navi-story-panel {
+        animation: none;
+    }
+}
+
+.navi-story-close:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+}
+
+/* ============================================================
+   Mode plein écran mobile (≤480px, voir isMobile() dans
+   views/js/stories.js) — indépendant du bouton flottant (#navi-fab) : une
+   vraie prise de contrôle de l'écran, pas le panneau ancré utilisé sur
+   desktop/laptop/tablette. Pas de mockup : l'écran EST déjà un téléphone.
+   Défilement vertical en scroll-snap façon stories entre toutes les
+   stories du même produit.
+   ============================================================ */
+.navi-story-fullscreen {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 999998;
+    background: #000;
+}
+
+.navi-story-fullscreen.is-open {
+    display: block;
+}
+
+/* Barre VERTICALE sur le bord droit — suit le sens du défilement entre
+   stories (scroll-snap vertical), flèche du haut = story précédente,
+   flèche du bas = story suivante, croix de fermeture au centre. */
+.navi-story-fullscreen-sidebar {
+    position: absolute;
+    top: 50%;
+    right: max(14px, env(safe-area-inset-right));
+    transform: translateY(-50%);
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+}
+
+.navi-story-fullscreen-sidebar button {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: none;
+    background: var(--navi-color-accent);
+    color: #fff;
+    font-size: 1.25rem;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+
+.navi-story-fullscreen-sidebar button:hover {
+    background: var(--navi-color-accent-deep);
+}
+
+.navi-story-fullscreen-sidebar button:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+}
+
+/* Bouton central (fermer) plus grand seulement : action principale,
+   toujours présente — les flèches ne s'affichent que s'il y a plusieurs
+   stories pour le produit (voir updateNavButtons() dans stories.js). */
+.navi-story-fullscreen-close {
+    width: 56px;
+    height: 56px;
+    font-size: 1.125rem;
+}
+
+.navi-story-fullscreen-nav:disabled {
+    opacity: 0.35;
+    cursor: default;
+}
+
+.navi-story-fullscreen-track {
+    height: 100%;
+    height: 100dvh;
+    overflow-y: auto;
+    scroll-snap-type: y mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+}
+
+.navi-story-fullscreen-track::-webkit-scrollbar {
+    display: none;
+}
+
+.navi-story-fullscreen-slide {
+    position: relative;
+    height: 100%;
+    height: 100dvh;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+    background: #000;
+}
+
+.navi-story-fullscreen-slide iframe {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    height: 100%;
+    width: auto;
+    aspect-ratio: 9 / 16;
+    min-width: 100%;
+    transform: translateX(-50%);
+    border: 0;
+    display: block;
+    pointer-events: auto;
+}
+
+.navi-story-fullscreen-guard-top,
+.navi-story-fullscreen-guard-bottom {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    z-index: 2;
+    background: transparent;
+}
+
+.navi-story-fullscreen-guard-top {
+    top: 0;
+    height: 12%;
+}
+
+.navi-story-fullscreen-guard-bottom {
+    bottom: 0;
+    height: 9%;
+}
+
+body.navi-story-fullscreen-lock {
+    overflow: hidden !important;
+}

@@ -1,0 +1,361 @@
+/* Couleurs du module (FAB + panneaux), exposées en variables CSS pour
+   pouvoir être surchargées par le thème ou par surcouche CSS de la
+   boutique (ex. dans un fichier CSS du thème, après le chargement de ce
+   module) sans toucher à ce fichier :
+   --navi-color-ink = texte/bordures neutres,
+   --navi-color-accent = couleur d'accent par défaut (bleu neutre, choisie
+   pour un contraste AA correct sur fond blanc/texte blanc — voir
+   --navi-color-accent-deep ci-dessous),
+   --navi-color-accent-deep = même teinte assombrie, pour le texte/fond
+   porteur de texte quand l'accent clair seul ne passe pas le contraste AA
+   (4.5:1) requis pour du texte normal — l'accent clair reste pour les
+   usages décoratifs (bordures, filets).
+   --navi-color-surface = fond des panneaux. */
+:root {
+    --navi-color-ink: #212529;
+    --navi-color-ink-rgb: 33, 37, 41;
+    --navi-color-ink-soft: #6c757d;
+    --navi-color-accent: #2563eb;
+    --navi-color-accent-rgb: 37, 99, 235;
+    --navi-color-accent-deep: #1e40af;
+    --navi-color-surface: #fff;
+    --navi-color-success: #1a7a4c;
+}
+
+/* Lien d'évitement (WCAG 2.4.1). */
+.navi-skip-link {
+    position: fixed;
+    top: -100px;
+    left: 12px;
+    z-index: 999999;
+    background: var(--navi-color-ink);
+    color: #fff;
+    padding: 10px 16px;
+    border-radius: 4px;
+    text-decoration: none;
+    font-size: 0.875rem;
+    font-family: inherit;
+    transition: top 0.2s ease;
+}
+
+.navi-skip-link:focus {
+    top: 12px;
+}
+
+/* Bouton flottant (FAB), unifié en un seul objet qui grandit à travers 3
+   états (voir views/js/core.js) :
+   1. fermé   : petit cercle avec l'engrenage
+   2. menu    : le MÊME élément s'agrandit pour révéler le choix des icônes
+   3. détail  : le MÊME élément s'agrandit encore pour le contenu du module */
+.navi-fab {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    z-index: 999997;
+    font-family: inherit;
+
+    --navi-scroll: 0;
+
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+
+    background-color: var(--navi-color-surface);
+    border: 1.5px solid rgba(var(--navi-color-ink-rgb), 0.55);
+    box-shadow: 0 2px 8px rgba(var(--navi-color-ink-rgb), 0.1);
+    overflow: hidden;
+
+    transition: width 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+                max-height 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+                border-radius 0.35s ease,
+                background-color 0.35s ease,
+                border-color 0.2s ease,
+                box-shadow 0.35s ease;
+}
+
+.navi-fab[data-position="left"] {
+    right: auto;
+    left: 20px;
+}
+
+.navi-fab[data-state="menu"],
+.navi-fab[data-state="detail"] {
+    border-radius: 0;
+    background-color: var(--navi-color-surface);
+    border: 1px solid rgba(var(--navi-color-ink-rgb), 0.12);
+    box-shadow: 0 8px 24px rgba(var(--navi-color-ink-rgb), 0.12);
+}
+
+.navi-fab[data-state="menu"] {
+    width: max-content;
+    height: auto;
+    max-height: 320px;
+}
+
+.navi-fab[data-state="detail"] {
+    width: 340px;
+    height: auto;
+    max-height: calc(100vh - 140px);
+}
+
+.navi-fab[data-state="detail"][data-detail="cookie-consent"] { width: 380px; }
+.navi-fab[data-state="detail"][data-detail="sticky-cart"] { width: 380px; }
+/* Panneau stories, plus étroit : la taille du mockup de téléphone ne
+   justifie pas la même largeur que les autres panneaux (voir
+   views/css/stories.css). Non utilisé tant que la gestion native des
+   stories (chantier 2) n'enregistre pas ce panneau côté PHP. */
+.navi-fab[data-state="detail"][data-detail="stories"] { width: 290px; }
+
+/* Fond/bordure/ombre du bouton flottant retirés uniquement pour ce
+   panneau : ne garder que le mockup de téléphone et la croix de fermeture,
+   pas la carte derrière (utile pour les autres panneaux qui affichent du
+   texte, superflue ici où le mockup fait déjà office de cadre visuel). */
+.navi-fab[data-state="detail"][data-detail="stories"] {
+    background-color: transparent;
+    border-color: transparent;
+    box-shadow: none;
+}
+
+/* ============================================================
+   État 1 : bouton fermé (engrenage)
+   ============================================================ */
+.navi-fab-toggle {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--navi-color-ink);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 1;
+    transition: opacity 0.15s ease;
+}
+
+.navi-fab[data-state="menu"] .navi-fab-toggle,
+.navi-fab[data-state="detail"] .navi-fab-toggle {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.navi-fab-toggle:hover,
+.navi-fab-toggle:focus-visible {
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+    color: var(--navi-color-ink);
+}
+
+.navi-fab-gear {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transform: rotate(calc(var(--navi-scroll, 0) * 1.8deg));
+    transition: transform 0.6s ease;
+}
+
+.navi-fab-gear svg {
+    width: 20px;
+    height: 20px;
+    display: block;
+}
+
+/* ============================================================
+   État 2 : choix des icônes, à l'intérieur du même objet
+   ============================================================ */
+.navi-fab-menu {
+    display: none;
+    flex-flow: row nowrap;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    height: 100%;
+    padding: 10px;
+}
+
+.navi-fab[data-state="menu"] .navi-fab-menu {
+    display: flex;
+}
+
+.navi-fab-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    width: auto;
+    height: auto;
+    padding: 0;
+    background: none;
+    border: none;
+    color: var(--navi-color-ink);
+    cursor: pointer;
+    opacity: 0;
+    transform: scale(0.92);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.navi-fab-item:hover,
+.navi-fab-item:focus-visible {
+    background: none;
+    border-color: transparent;
+    box-shadow: none;
+    color: var(--navi-color-ink);
+}
+
+.navi-fab-item-ring {
+    width: 32px;
+    height: 32px;
+    font-size: 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Sans taille explicite, un <svg> qui n'a qu'un viewBox (sans attributs
+   width/height propres) s'effondre à 0×0 dans ce conteneur flex —
+   display:inline-flex sur le conteneur : un <span> width:auto ne se
+   dimensionne pas sur un enfant SVG à taille intrinsèque nulle,
+   contrairement à un flex item. */
+.navi-fab-item-icon--svg {
+    display: inline-flex;
+}
+
+.navi-fab-item-icon--svg svg {
+    width: 20px;
+    height: 20px;
+    display: block;
+}
+
+.navi-fab-item-label {
+    font-family: inherit;
+    font-size: 0.6875rem;
+    line-height: 1.2;
+    color: var(--navi-color-ink-soft);
+    text-align: center;
+    white-space: normal;
+
+    text-decoration-line: underline;
+    text-underline-offset: 2px;
+    text-decoration-color: transparent;
+    transition: text-decoration-color 0.15s ease;
+}
+
+.navi-fab-item:hover .navi-fab-item-label {
+    text-decoration-color: currentcolor;
+}
+
+.navi-fab[data-state="menu"] .navi-fab-item {
+    opacity: 1;
+    transform: scale(1);
+    transition-delay: calc(220ms + var(--navi-index, 0) * 40ms);
+}
+
+.navi-fab-menu-close {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    background: none;
+    color: var(--navi-color-ink-soft);
+    font-size: 0.875rem;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    opacity: 0;
+    transform: scale(0.85);
+    transition: opacity 0.2s ease, transform 0.2s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.navi-fab-menu-close:hover {
+    background: rgba(var(--navi-color-ink-rgb), 0.06);
+    border-color: transparent;
+    box-shadow: none;
+    color: var(--navi-color-ink);
+}
+
+.navi-fab[data-state="menu"] .navi-fab-menu-close {
+    opacity: 1;
+    transform: scale(1);
+}
+
+/* ============================================================
+   État 3 : contenu détaillé du module choisi
+   ============================================================ */
+.navi-fab-detail {
+    display: none;
+    width: 100%;
+    height: 100%;
+    flex-direction: column;
+}
+
+.navi-fab[data-state="detail"] .navi-fab-detail {
+    display: flex;
+}
+
+.navi-fab-detail > * {
+    display: none;
+}
+
+.navi-fab[data-detail="cookie-consent"] #navi-cookie-modal-overlay,
+.navi-fab[data-detail="accessibility"] #navi-a11y-panel,
+.navi-fab[data-detail="sticky-cart"] #navi-sticky-bar,
+.navi-fab[data-detail="stories"] #navi-story-panel {
+    display: flex;
+}
+
+@media (max-width: 480px) {
+    .navi-fab {
+        right: 14px;
+        bottom: 14px;
+    }
+
+    .navi-fab[data-position="left"] {
+        right: auto;
+        left: 14px;
+    }
+
+    .navi-fab[data-state="menu"],
+    .navi-fab[data-state="detail"] {
+        width: auto;
+        max-width: calc(100vw - 28px);
+    }
+
+    .navi-fab-menu {
+        flex-flow: row wrap;
+    }
+
+    .navi-fab[data-state="detail"] {
+        max-height: calc(100vh - 110px);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .navi-fab,
+    .navi-fab-gear,
+    .navi-fab-item,
+    .navi-fab-item-ring,
+    .navi-fab-menu-close,
+    .navi-fab-toggle {
+        transition: none;
+    }
+}
+
+.navi-fab-toggle:focus-visible,
+.navi-fab-item:focus-visible,
+.navi-fab-menu-close:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+}
+
+html.navi-mouse-user .navi-fab-toggle:focus,
+html.navi-mouse-user .navi-fab-item:focus,
+html.navi-mouse-user .navi-fab-menu-close:focus {
+    outline: none;
+}

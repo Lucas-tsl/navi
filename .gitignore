@@ -1,0 +1,8 @@
+/build/
+*.zip
+.DS_Store
+
+# Suite de tests (tests/README.md)
+tests/node_modules/
+tests/test-results/
+tests/playwright-report/

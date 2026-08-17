@@ -1,0 +1,37 @@
+name: CI
+
+# CI "basique" volontairement : lint PHP/JS + synchro de version, pas
+# d'exécution de la suite Playwright (tests/) qui nécessite une vraie
+# instance PrestaShop — voir tests/README.md.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  php-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '7.4'
+      - name: php -l sur tous les fichiers PHP du module
+        run: find navi -name "*.php" -print0 | xargs -0 -I{} php -l {}
+
+  js-syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Vérification syntaxe JS (node --check)
+        run: find navi -name "*.js" -print0 | xargs -0 -I{} node --check {}
+
+  version-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: navi.php <-> config.xml synchronisés
+        run: ./scripts/check-version-sync.sh

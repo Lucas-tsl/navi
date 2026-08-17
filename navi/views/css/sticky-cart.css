@@ -1,0 +1,237 @@
+/**
+ * Panneau "Ajout au panier", affiché comme contenu du même objet que le
+ * bouton engrenage (voir views/js/core.js, views/css/core.css) : ce fichier
+ * ne définit que le contenu interne, pas de position ni d'habillage propre.
+ *
+ * Version produit simple uniquement pour l'instant (voir
+ * views/js/sticky-cart.js) : pas de sélecteur de variation/déclinaison.
+ */
+
+.navi-sticky-bar,
+.navi-sticky-bar *,
+.navi-sticky-bar *::before,
+.navi-sticky-bar *::after {
+    box-sizing: border-box;
+}
+
+.navi-sticky-bar {
+    width: 100%;
+    max-height: calc(100vh - 140px);
+    min-height: 0;
+    flex-direction: column;
+}
+
+@media (max-width: 480px) {
+    .navi-sticky-bar {
+        max-height: calc(100vh - 110px);
+    }
+}
+
+.navi-sticky-close {
+    position: absolute;
+    top: 8px;
+    right: 14px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(var(--navi-color-ink-rgb), 0.06);
+    color: var(--navi-color-ink);
+    font-size: 0.875rem;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    z-index: 2;
+    flex-shrink: 0;
+}
+
+.navi-sticky-close:hover {
+    background: rgba(var(--navi-color-ink-rgb), 0.12);
+    border-color: transparent;
+    box-shadow: none;
+    color: var(--navi-color-ink);
+}
+
+.navi-sticky-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden auto;
+    padding: 26px 16px 12px 12px;
+}
+
+/* Grille (pas de flex imbriqué) : image à gauche, nom du produit à droite
+   dans la même ligne, bouton d'ajout en pleine largeur en dessous. */
+.navi-sticky-content {
+    display: grid;
+    grid-template-columns: 60px 1fr;
+    grid-template-areas:
+        "image name"
+        "cart cart";
+    gap: 12px 14px;
+}
+
+.navi-sticky-image {
+    grid-area: image;
+    width: 60px;
+    height: 60px;
+}
+
+.navi-sticky-img {
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 4px;
+}
+
+.navi-sticky-info {
+    grid-area: name;
+    align-self: center;
+    min-width: 0;
+}
+
+.navi-sticky-name {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--navi-color-ink);
+    font-family: inherit;
+    display: block;
+}
+
+/* À l'intérieur de .navi-sticky-add-to-cart (bouton coloré, texte blanc) :
+   hérite explicitement plutôt que de garder la couleur sombre pensée pour
+   un affichage à côté du nom du produit — sinon le prix ressortait en texte
+   sombre sur fond coloré, illisible. */
+.navi-sticky-price {
+    color: inherit;
+}
+
+/* Marge plutôt que des espaces littéraux autour du texte "-" : certains
+   thèmes posent des règles globales agressives sur <span> (ex.
+   `display: block`) qui suppriment les espaces en début/fin de contenu —
+   la marge reste fiable quel que soit le markup du thème. */
+.navi-sticky-dash {
+    margin: 0 4px;
+}
+
+.navi-sticky-cart-zone {
+    grid-area: cart;
+}
+
+.navi-sticky-add-to-cart {
+    font-family: inherit;
+    width: 100%;
+    padding: 13px 16px;
+    background: var(--navi-color-accent);
+    color: #fff;
+    border: 1px solid var(--navi-color-accent);
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+}
+
+.navi-sticky-add-to-cart:hover:not(:disabled) {
+    background: var(--navi-color-accent-deep);
+    border-color: var(--navi-color-accent-deep);
+    color: #fff;
+    box-shadow: none;
+}
+
+.navi-sticky-add-to-cart:disabled {
+    background: #eee;
+    color: var(--navi-color-ink-soft);
+    border-color: #eee;
+    cursor: not-allowed;
+    opacity: 1;
+}
+
+.navi-sticky-add-to-cart.loading {
+    background: var(--navi-color-accent-deep);
+    border-color: var(--navi-color-accent-deep);
+    color: #fff;
+    cursor: wait;
+    pointer-events: none;
+}
+
+.navi-sticky-add-to-cart .navi-sticky-loading-text {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.navi-sticky-add-to-cart .navi-sticky-loading-text::after {
+    content: '';
+    width: 14px;
+    height: 14px;
+    border: 2px solid #fff;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: navi-sticky-spin 0.8s linear infinite;
+}
+
+@keyframes navi-sticky-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.navi-sticky-add-to-cart.added {
+    background: var(--navi-color-success);
+    border-color: var(--navi-color-success);
+    color: #fff;
+    cursor: default;
+}
+
+.navi-sticky-out-of-stock {
+    width: 100%;
+    padding: 12px 15px;
+    border-radius: 4px;
+    background: rgba(var(--navi-color-ink-rgb), 0.06);
+    color: var(--navi-color-ink-soft);
+    font-family: inherit;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    text-align: center;
+}
+
+/* Léger fondu à l'apparition (le grandissement de l'objet partagé lui-même
+   est géré par #navi-fab, views/css/core.css). */
+.navi-sticky-bar.navi-sticky-visible .navi-sticky-content {
+    animation: navi-sticky-fade 0.3s ease-out 0.08s both;
+}
+
+@keyframes navi-sticky-fade {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .navi-sticky-bar.navi-sticky-visible .navi-sticky-content {
+        animation: none;
+    }
+
+    .navi-sticky-add-to-cart .navi-sticky-loading-text::after {
+        animation: none;
+    }
+}
+
+.navi-sticky-close:focus-visible,
+.navi-sticky-add-to-cart:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+}

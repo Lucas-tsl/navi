@@ -1,0 +1,11 @@
+{
+  "name": "navi-tests",
+  "private": true,
+  "description": "Suite de non-régression Playwright pour le module navi — nécessite une instance PrestaShop en cours d'exécution (voir README.md de ce dossier).",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.47.0"
+  }
+}
