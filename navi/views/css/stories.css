@@ -137,7 +137,7 @@
 .navi-story-phone {
     position: relative;
     width: 100%;
-    max-width: 210px;
+    max-width: 200px;
     aspect-ratio: 9 / 18.5;
     flex-shrink: 0;
     background: var(--navi-story-phone-bg);

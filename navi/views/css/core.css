@@ -119,16 +119,11 @@
 /* Fond/bordure/ombre du bouton flottant retirés uniquement pour ce
    panneau : ne garder que le mockup de téléphone et la croix de fermeture,
    pas la carte derrière (utile pour les autres panneaux qui affichent du
-   texte, superflue ici où le mockup fait déjà office de cadre visuel).
-   `bottom` légèrement augmenté (par rapport aux 20px hérités de .navi-fab)
-   : remonte le panneau pour que le bas du mockup de téléphone ne soit
-   plus rogné par le bord de l'écran sur les hauteurs de fenêtre réduites
-   (laptop, fenêtre non maximisée). */
+   texte, superflue ici où le mockup fait déjà office de cadre visuel). */
 .navi-fab[data-state="detail"][data-detail="stories"] {
     background-color: transparent;
     border-color: transparent;
     box-shadow: none;
-    bottom: 45px;
 }
 
 /* ============================================================

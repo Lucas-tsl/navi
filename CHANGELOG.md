@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.2
+
+- Retiré le décalage `bottom: 45px` du panneau stories ajouté en 1.4.1 —
+  revient à l'espacement standard (20px, hérité de `.navi-fab`).
+- `.navi-story-phone` : largeur maximale réduite de 210px à 200px.
+
 ## 1.4.1
 
 Retour en arrière partiel sur le correctif d'affichage de la 1.4.0 :
