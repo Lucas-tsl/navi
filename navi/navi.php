@@ -30,6 +30,12 @@ class Navi extends Module
     const DEFAULT_FAB_POSITION = 'right';
     const REPO_URL = 'https://github.com/Lucas-tsl/navi';
 
+    const DEFAULT_STORIES_VIDEO_BORDER_WIDTH = '0';
+    const DEFAULT_STORIES_PHONE_WIDTH = '200';
+    const MIN_STORIES_PHONE_WIDTH = 150;
+    const MAX_STORIES_PHONE_WIDTH = 280;
+    const MAX_STORIES_VIDEO_BORDER_WIDTH = 10;
+
     /**
      * Bascules "Afficher sur ordinateur / mobile" partagées par toutes les
      * fonctionnalités pilotées depuis le bouton flottant — un seul endroit
@@ -62,7 +68,7 @@ class Navi extends Module
     {
         $this->name = 'navi';
         $this->tab = 'front_office_features';
-        $this->version = '1.4.3';
+        $this->version = '1.5.0';
         $this->author = 'Troteseil Lucas';
         $this->need_instance = 0;
         $this->bootstrap = true;
@@ -165,6 +171,8 @@ class Navi extends Module
         Configuration::updateValue('NAVI_STORIES_COLOR_CLOSE_BG', self::DEFAULT_STORIES_CLOSE_BG);
         Configuration::updateValue('NAVI_STORIES_COLOR_OVERLAY', self::DEFAULT_STORIES_OVERLAY_BG);
         Configuration::updateValue('NAVI_FAB_POSITION', self::DEFAULT_FAB_POSITION);
+        Configuration::updateValue('NAVI_STORIES_VIDEO_BORDER_WIDTH', self::DEFAULT_STORIES_VIDEO_BORDER_WIDTH);
+        Configuration::updateValue('NAVI_STORIES_PHONE_WIDTH', self::DEFAULT_STORIES_PHONE_WIDTH);
 
         foreach (self::VISIBILITY_TOGGLES as $desktopKey => $info) {
             Configuration::updateValue($desktopKey, '1');
@@ -218,7 +226,9 @@ class Navi extends Module
             && Configuration::deleteByName('NAVI_STORIES_COLOR_CLOSE_ICON')
             && Configuration::deleteByName('NAVI_STORIES_COLOR_CLOSE_BG')
             && Configuration::deleteByName('NAVI_STORIES_COLOR_OVERLAY')
-            && Configuration::deleteByName('NAVI_FAB_POSITION');
+            && Configuration::deleteByName('NAVI_FAB_POSITION')
+            && Configuration::deleteByName('NAVI_STORIES_VIDEO_BORDER_WIDTH')
+            && Configuration::deleteByName('NAVI_STORIES_PHONE_WIDTH');
 
         foreach (self::VISIBILITY_TOGGLES as $desktopKey => $info) {
             $ok = Configuration::deleteByName($desktopKey) && $ok;
@@ -319,7 +329,43 @@ class Navi extends Module
             $output .= $this->displayConfirmation($this->l('Réglages enregistrés.'));
         }
 
-        return $output . $this->getHelpBlock() . $this->renderForm();
+        if (Tools::isSubmit('submitNaviVideoAppearance')) {
+            $borderWidth = max(0, min(self::MAX_STORIES_VIDEO_BORDER_WIDTH, (int) Tools::getValue('NAVI_STORIES_VIDEO_BORDER_WIDTH')));
+            $phoneWidth = max(self::MIN_STORIES_PHONE_WIDTH, min(self::MAX_STORIES_PHONE_WIDTH, (int) Tools::getValue('NAVI_STORIES_PHONE_WIDTH')));
+            Configuration::updateValue('NAVI_STORIES_VIDEO_BORDER_WIDTH', $borderWidth);
+            Configuration::updateValue('NAVI_STORIES_PHONE_WIDTH', $phoneWidth);
+            $output .= $this->displayConfirmation($this->l('Réglages enregistrés.'));
+        }
+
+        return $output . $this->getHelpBlock() . $this->getVideoAppearanceBlock() . $this->renderForm();
+    }
+
+    /**
+     * Mini-formulaire à part (pas un fieldset HelperForm standard) : les
+     * deux curseurs et l'aperçu en direct ont besoin de vrais éléments
+     * <input type="range"> avec des graduations et du JS pour la mise à
+     * jour instantanée — HelperForm ne propose pas ce type de champ.
+     * Soumission indépendante (submitNaviVideoAppearance) pour rester
+     * simple, plutôt que d'essayer de le faire cohabiter dans le même
+     * <form> que les fieldsets générés par HelperForm ci-dessous.
+     */
+    private function getVideoAppearanceBlock()
+    {
+        $this->context->smarty->assign([
+            'navi_video_border_width' => max(0, (int) (Configuration::get('NAVI_STORIES_VIDEO_BORDER_WIDTH') !== false ? Configuration::get('NAVI_STORIES_VIDEO_BORDER_WIDTH') : self::DEFAULT_STORIES_VIDEO_BORDER_WIDTH)),
+            'navi_video_border_max' => self::MAX_STORIES_VIDEO_BORDER_WIDTH,
+            'navi_phone_width' => max(self::MIN_STORIES_PHONE_WIDTH, (int) (Configuration::get('NAVI_STORIES_PHONE_WIDTH') !== false ? Configuration::get('NAVI_STORIES_PHONE_WIDTH') : self::DEFAULT_STORIES_PHONE_WIDTH)),
+            'navi_phone_width_min' => self::MIN_STORIES_PHONE_WIDTH,
+            'navi_phone_width_max' => self::MAX_STORIES_PHONE_WIDTH,
+            'navi_accent_color' => $this->sanitizeHexColor(Configuration::get('NAVI_COLOR_ACCENT'), self::DEFAULT_COLOR_ACCENT),
+            'navi_ajax_token' => Tools::getAdminTokenLite('AdminModules'),
+            'navi_current_index' => $this->context->link->getAdminLink('AdminModules', false)
+                . '&configure=' . $this->name . '&tab_module=' . $this->tab . '&module_name=' . $this->name,
+            'navi_video_border_ticks' => range(0, self::MAX_STORIES_VIDEO_BORDER_WIDTH),
+            'navi_phone_width_ticks' => range(self::MIN_STORIES_PHONE_WIDTH, self::MAX_STORIES_PHONE_WIDTH, 10),
+        ]);
+
+        return $this->fetch('module:' . $this->name . '/views/templates/admin/video-appearance.tpl');
     }
 
     /**
@@ -690,6 +736,8 @@ class Navi extends Module
         $storiesCloseIcon = $this->sanitizeHexColor(Configuration::get('NAVI_STORIES_COLOR_CLOSE_ICON'), self::DEFAULT_STORIES_CLOSE_ICON);
         $storiesCloseBg = $this->sanitizeHexColor(Configuration::get('NAVI_STORIES_COLOR_CLOSE_BG'), self::DEFAULT_STORIES_CLOSE_BG);
         $storiesOverlayBg = $this->sanitizeHexColor(Configuration::get('NAVI_STORIES_COLOR_OVERLAY'), self::DEFAULT_STORIES_OVERLAY_BG);
+        $videoBorderWidth = max(0, min(self::MAX_STORIES_VIDEO_BORDER_WIDTH, (int) (Configuration::get('NAVI_STORIES_VIDEO_BORDER_WIDTH') !== false ? Configuration::get('NAVI_STORIES_VIDEO_BORDER_WIDTH') : self::DEFAULT_STORIES_VIDEO_BORDER_WIDTH)));
+        $phoneWidth = max(self::MIN_STORIES_PHONE_WIDTH, min(self::MAX_STORIES_PHONE_WIDTH, (int) (Configuration::get('NAVI_STORIES_PHONE_WIDTH') !== false ? Configuration::get('NAVI_STORIES_PHONE_WIDTH') : self::DEFAULT_STORIES_PHONE_WIDTH)));
 
         $css = 'html:root{'
             . '--navi-color-accent:' . $accent . ';'
@@ -701,6 +749,8 @@ class Navi extends Module
             . '--navi-story-close-icon:' . $storiesCloseIcon . ';'
             . '--navi-story-close-bg:' . $storiesCloseBg . ';'
             . '--navi-story-overlay-bg:' . $storiesOverlayBg . ';'
+            . '--navi-story-video-border-width:' . $videoBorderWidth . 'px;'
+            . '--navi-story-phone-width:' . $phoneWidth . 'px;'
             . '}';
 
         if (!Configuration::get('NAVI_STORIES_SHOW_LABEL')) {

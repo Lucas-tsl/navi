@@ -29,6 +29,8 @@ widgets indépendants.
   stories (mockup, croix, plein écran mobile) personnalisables.
 - ✅ Bloc Aide/Documentation dans le Configure (lien repo + création
   d'issue pré-remplie).
+- ✅ Épaisseur de la bordure vidéo et taille du mockup de téléphone des
+  stories réglables via curseurs gradués, avec aperçu en direct.
 
 ## Installation
 
@@ -102,7 +104,9 @@ vraie instance PrestaShop (pas branchée en CI, à lancer manuellement).
 ## Limitations connues
 
 - Panier sticky : pas de sélecteur de variation/déclinaison pour les
-  produits avec combinaisons.
+  produits avec combinaisons — voir
+  [issue #1](https://github.com/Lucas-tsl/navi/issues/1), contributions
+  bienvenues.
 - Traductions : les chaînes passent par `$this->l()`/`{l}` mais aucun
   fichier `translations/<iso>.php` n'existe encore — le module est
   aujourd'hui francophone par défaut.

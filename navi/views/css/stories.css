@@ -142,7 +142,7 @@
 .navi-story-phone {
     position: relative;
     width: 100%;
-    max-width: 200px;
+    max-width: var(--navi-story-phone-width);
     aspect-ratio: 9 / 18.5;
     flex-shrink: 0;
     background: var(--navi-story-phone-bg);
@@ -156,8 +156,12 @@
     position: relative;
     width: 100%;
     height: 100%;
+    box-sizing: border-box;
     overflow: hidden;
     border-radius: 24px;
+    border-style: solid;
+    border-color: var(--navi-color-accent);
+    border-width: var(--navi-story-video-border-width);
     background: #000;
 }
 

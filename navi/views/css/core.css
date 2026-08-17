@@ -31,6 +31,8 @@
     --navi-story-close-icon: #ffffff;
     --navi-story-close-bg: #000000;
     --navi-story-overlay-bg: #000000;
+    --navi-story-video-border-width: 0px;
+    --navi-story-phone-width: 200px;
 }
 
 /* Lien d'évitement (WCAG 2.4.1). */

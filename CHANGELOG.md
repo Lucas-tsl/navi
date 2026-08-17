@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.5.0
+
+- **Stories — aspect de la vidéo** : nouveau bloc dans le Configure avec
+  deux curseurs gradués (épaisseur de la bordure autour de l'écran vidéo,
+  taille du mockup de téléphone) et un aperçu en direct qui se met à jour
+  pendant qu'on glisse le curseur. Formulaire indépendant des autres
+  réglages Stories (soumission séparée), HelperForm ne proposant pas de
+  champ de type curseur.
+- `upgrade/upgrade-1.5.0.php` pour les installations déjà en place.
+
 ## 1.4.3
 
 - Libellé des bulles stories : passe à la ligne au lieu d'être tronqué
