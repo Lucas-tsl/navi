@@ -2,7 +2,7 @@
 <module>
     <name>navi</name>
     <displayName><![CDATA[Navi]]></displayName>
-    <version><![CDATA[1.3.0]]></version>
+    <version><![CDATA[1.4.0]]></version>
     <description><![CDATA[Hub d'engagement flottant : consentement cookies (Google Consent Mode v2), accessibilité (taille du texte, contraste, curseur), ajout au panier sticky, bulles vidéo "stories" sur les fiches produit et mini-panier automatique, pilotés depuis un bouton unique. Couleurs et arrondis personnalisables.]]></description>
     <author><![CDATA[Troteseil Lucas]]></author>
     <tab><![CDATA[front_office_features]]></tab>

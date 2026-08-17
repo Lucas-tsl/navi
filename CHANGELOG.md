@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.4.0
+
+- **Stories** : correctif d'affichage — le mockup de téléphone pouvait être
+  coupé en bas du panneau sur les écrans de hauteur réduite (laptop,
+  fenêtre non maximisée). Contraint désormais par largeur ET hauteur
+  disponibles (`max-height: min(60vh, 420px)`), plus besoin de scroller
+  pour voir le bas du mockup.
+- **Stories** : couleur du fond du mockup téléphone, couleur de la croix
+  de fermeture, couleur du fond de son bouton, couleur du fond plein écran
+  (mobile), toutes personnalisables depuis *Configurer > Stories*. Note :
+  le fond du bouton de fermeture passe d'un noir semi-transparent à une
+  couleur pleine configurable (nécessaire pour rester personnalisable).
+- **Position du bouton flottant** : gauche ou droite, dans *Configurer >
+  Apparence*.
+- **Aide / Documentation** : nouveau bloc en haut du Configure — lien vers
+  le dépôt GitHub et lien pré-rempli pour ouvrir une issue (version du
+  module/PrestaShop/thème déjà renseignées).
+- `upgrade/upgrade-1.4.0.php` pour les installations déjà en place.
+
 ## 1.3.0
 
 - **Visibilité par fonctionnalité** : chaque fonctionnalité pilotée depuis

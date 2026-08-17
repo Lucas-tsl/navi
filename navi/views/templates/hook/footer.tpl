@@ -13,7 +13,7 @@
 {* Un seul objet DOM traverse les 3 états (fermé / menu / détail) : voir
    views/css/core.css et views/js/core.js. #navi-fab-detail est le slot
    partagé où chaque module vient afficher son propre contenu. *}
-<div id="navi-fab" class="navi-fab" data-state="closed" data-position="right">
+<div id="navi-fab" class="navi-fab" data-state="closed" data-position="{$navi_fab_position|escape:'html':'UTF-8'}">
     <button type="button" id="navi-fab-toggle" class="navi-fab-toggle" aria-expanded="false" aria-label="{l s='Ouvrir le menu' mod='navi'}">
         <span class="navi-fab-gear" aria-hidden="true">{$navi_gear_svg nofilter}</span>
     </button>

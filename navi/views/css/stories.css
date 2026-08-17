@@ -100,8 +100,8 @@
     height: 28px;
     border-radius: 50%;
     border: none;
-    background: rgba(0, 0, 0, 0.55);
-    color: #fff;
+    background: var(--navi-story-close-bg);
+    color: var(--navi-story-close-icon);
     font-size: 0.875rem;
     line-height: 1;
     cursor: pointer;
@@ -114,10 +114,11 @@
 }
 
 .navi-story-close:hover {
-    background: rgba(0, 0, 0, 0.75);
+    background: var(--navi-story-close-bg);
+    opacity: 0.85;
     border-color: transparent;
     box-shadow: none;
-    color: #fff;
+    color: var(--navi-story-close-icon);
 }
 
 .navi-story-scroll {
@@ -137,9 +138,15 @@
     position: relative;
     width: 100%;
     max-width: 210px;
+    /* max-height en plus du ratio : sans ça, sur un écran de hauteur
+       réduite (laptop, fenêtre non maximisée), le mockup pouvait dépasser
+       la zone visible du panneau et être coupé en bas — min() laisse le
+       navigateur choisir la plus petite des deux contraintes (largeur OU
+       hauteur disponible) tout en gardant le ratio 9:18.5. */
+    max-height: min(60vh, 420px);
     aspect-ratio: 9 / 18.5;
     flex-shrink: 0;
-    background: #111;
+    background: var(--navi-story-phone-bg);
     border-radius: 34px;
     padding: 10px;
     box-sizing: border-box;
@@ -256,7 +263,7 @@
     position: fixed;
     inset: 0;
     z-index: 999998;
-    background: #000;
+    background: var(--navi-story-overlay-bg);
 }
 
 .navi-story-fullscreen.is-open {
@@ -337,7 +344,7 @@
     height: 100dvh;
     scroll-snap-align: start;
     scroll-snap-stop: always;
-    background: #000;
+    background: var(--navi-story-overlay-bg);
 }
 
 .navi-story-fullscreen-slide iframe {

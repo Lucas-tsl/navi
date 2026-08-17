@@ -25,6 +25,10 @@ widgets indépendants.
 - ✅ Visibilité par fonctionnalité et par appareil ("Afficher sur
   ordinateur"/"Afficher sur mobile", indépendamment pour chaque
   fonctionnalité), titre et bordure des bulles stories personnalisables.
+- ✅ Position du bouton flottant (gauche/droite), couleurs du panneau
+  stories (mockup, croix, plein écran mobile) personnalisables.
+- ✅ Bloc Aide/Documentation dans le Configure (lien repo + création
+  d'issue pré-remplie).
 
 ## Installation
 

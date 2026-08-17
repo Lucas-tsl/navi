@@ -23,6 +23,12 @@ class Navi extends Module
     const DEFAULT_RADIUS_BUTTON = '4';
     const DEFAULT_RADIUS_IMAGE = '4';
     const DEFAULT_STORIES_BORDER_WIDTH = '2';
+    const DEFAULT_STORIES_PHONE_BG = '#111111';
+    const DEFAULT_STORIES_CLOSE_ICON = '#ffffff';
+    const DEFAULT_STORIES_CLOSE_BG = '#000000';
+    const DEFAULT_STORIES_OVERLAY_BG = '#000000';
+    const DEFAULT_FAB_POSITION = 'right';
+    const REPO_URL = 'https://github.com/Lucas-tsl/navi';
 
     /**
      * Bascules "Afficher sur ordinateur / mobile" partagées par toutes les
@@ -56,7 +62,7 @@ class Navi extends Module
     {
         $this->name = 'navi';
         $this->tab = 'front_office_features';
-        $this->version = '1.3.0';
+        $this->version = '1.4.0';
         $this->author = 'Troteseil Lucas';
         $this->need_instance = 0;
         $this->bootstrap = true;
@@ -154,6 +160,11 @@ class Navi extends Module
         Configuration::updateValue('NAVI_RADIUS_IMAGE', self::DEFAULT_RADIUS_IMAGE);
         Configuration::updateValue('NAVI_STORIES_SHOW_LABEL', '1');
         Configuration::updateValue('NAVI_STORIES_BORDER_WIDTH', self::DEFAULT_STORIES_BORDER_WIDTH);
+        Configuration::updateValue('NAVI_STORIES_COLOR_PHONE_BG', self::DEFAULT_STORIES_PHONE_BG);
+        Configuration::updateValue('NAVI_STORIES_COLOR_CLOSE_ICON', self::DEFAULT_STORIES_CLOSE_ICON);
+        Configuration::updateValue('NAVI_STORIES_COLOR_CLOSE_BG', self::DEFAULT_STORIES_CLOSE_BG);
+        Configuration::updateValue('NAVI_STORIES_COLOR_OVERLAY', self::DEFAULT_STORIES_OVERLAY_BG);
+        Configuration::updateValue('NAVI_FAB_POSITION', self::DEFAULT_FAB_POSITION);
 
         foreach (self::VISIBILITY_TOGGLES as $desktopKey => $info) {
             Configuration::updateValue($desktopKey, '1');
@@ -202,7 +213,12 @@ class Navi extends Module
             && Configuration::deleteByName('NAVI_RADIUS_BUTTON')
             && Configuration::deleteByName('NAVI_RADIUS_IMAGE')
             && Configuration::deleteByName('NAVI_STORIES_SHOW_LABEL')
-            && Configuration::deleteByName('NAVI_STORIES_BORDER_WIDTH');
+            && Configuration::deleteByName('NAVI_STORIES_BORDER_WIDTH')
+            && Configuration::deleteByName('NAVI_STORIES_COLOR_PHONE_BG')
+            && Configuration::deleteByName('NAVI_STORIES_COLOR_CLOSE_ICON')
+            && Configuration::deleteByName('NAVI_STORIES_COLOR_CLOSE_BG')
+            && Configuration::deleteByName('NAVI_STORIES_COLOR_OVERLAY')
+            && Configuration::deleteByName('NAVI_FAB_POSITION');
 
         foreach (self::VISIBILITY_TOGGLES as $desktopKey => $info) {
             $ok = Configuration::deleteByName($desktopKey) && $ok;
@@ -289,6 +305,11 @@ class Navi extends Module
             Configuration::updateValue('NAVI_RADIUS_IMAGE', max(0, (int) Tools::getValue('NAVI_RADIUS_IMAGE')));
             Configuration::updateValue('NAVI_STORIES_SHOW_LABEL', (int) Tools::getValue('NAVI_STORIES_SHOW_LABEL'));
             Configuration::updateValue('NAVI_STORIES_BORDER_WIDTH', max(0, (int) Tools::getValue('NAVI_STORIES_BORDER_WIDTH')));
+            Configuration::updateValue('NAVI_STORIES_COLOR_PHONE_BG', $this->sanitizeHexColor(Tools::getValue('NAVI_STORIES_COLOR_PHONE_BG'), self::DEFAULT_STORIES_PHONE_BG));
+            Configuration::updateValue('NAVI_STORIES_COLOR_CLOSE_ICON', $this->sanitizeHexColor(Tools::getValue('NAVI_STORIES_COLOR_CLOSE_ICON'), self::DEFAULT_STORIES_CLOSE_ICON));
+            Configuration::updateValue('NAVI_STORIES_COLOR_CLOSE_BG', $this->sanitizeHexColor(Tools::getValue('NAVI_STORIES_COLOR_CLOSE_BG'), self::DEFAULT_STORIES_CLOSE_BG));
+            Configuration::updateValue('NAVI_STORIES_COLOR_OVERLAY', $this->sanitizeHexColor(Tools::getValue('NAVI_STORIES_COLOR_OVERLAY'), self::DEFAULT_STORIES_OVERLAY_BG));
+            Configuration::updateValue('NAVI_FAB_POSITION', in_array(Tools::getValue('NAVI_FAB_POSITION'), ['left', 'right'], true) ? Tools::getValue('NAVI_FAB_POSITION') : self::DEFAULT_FAB_POSITION);
 
             foreach (self::VISIBILITY_TOGGLES as $desktopKey => $info) {
                 Configuration::updateValue($desktopKey, (int) Tools::getValue($desktopKey));
@@ -298,7 +319,39 @@ class Navi extends Module
             $output .= $this->displayConfirmation($this->l('Réglages enregistrés.'));
         }
 
-        return $output . $this->renderForm();
+        return $output . $this->getHelpBlock() . $this->renderForm();
+    }
+
+    /**
+     * Bloc "Aide / Documentation" en haut du Configure — pas de nouvelle
+     * clé de configuration, purement informatif : lien vers le dépôt et
+     * lien pré-rempli pour ouvrir une issue avec le contexte utile déjà
+     * renseigné (version du module/de PrestaShop/du thème), pour éviter
+     * les allers-retours "peux-tu préciser ta version ?".
+     */
+    private function getHelpBlock()
+    {
+        $issueBody = "**Version du module Navi :** " . $this->version . "\n"
+            . '**Version PrestaShop :** ' . _PS_VERSION_ . "\n"
+            . '**Thème actif :** ' . Configuration::get('PS_THEME_NAME') . "\n\n"
+            . "**Description du problème**\n\n\n"
+            . "**Étapes pour reproduire**\n1. \n2. \n3. \n\n"
+            . "**Comportement attendu**\n\n";
+
+        $issueUrl = self::REPO_URL . '/issues/new?title=' . rawurlencode('[Bug] ')
+            . '&body=' . rawurlencode($issueBody);
+
+        return '<div class="panel">
+            <h3><i class="icon-life-ring"></i> ' . $this->l('Aide / Documentation') . '</h3>
+            <p>' . $this->l('Documentation complète, changelog et code source :') . '
+                <a href="' . self::REPO_URL . '" target="_blank" rel="noopener">' . self::REPO_URL . '</a>
+            </p>
+            <p>' . $this->l('Un problème, une question, une suggestion ?') . '
+                <a href="' . $issueUrl . '" target="_blank" rel="noopener" class="btn btn-default">
+                    <i class="icon-github"></i> ' . $this->l('Ouvrir une issue sur GitHub') . '
+                </a>
+            </p>
+        </div>';
     }
 
     /**
@@ -421,6 +474,26 @@ class Navi extends Module
                         'suffix' => 'px',
                         'desc' => $this->l('0 = pas de bordure.'),
                     ],
+                    [
+                        'type' => 'color',
+                        'label' => $this->l('Couleur du fond du mockup téléphone'),
+                        'name' => 'NAVI_STORIES_COLOR_PHONE_BG',
+                    ],
+                    [
+                        'type' => 'color',
+                        'label' => $this->l('Couleur de la croix (icône)'),
+                        'name' => 'NAVI_STORIES_COLOR_CLOSE_ICON',
+                    ],
+                    [
+                        'type' => 'color',
+                        'label' => $this->l('Couleur du fond du bouton de fermeture'),
+                        'name' => 'NAVI_STORIES_COLOR_CLOSE_BG',
+                    ],
+                    [
+                        'type' => 'color',
+                        'label' => $this->l('Couleur du fond plein écran (mobile)'),
+                        'name' => 'NAVI_STORIES_COLOR_OVERLAY',
+                    ],
                 ], $this->getVisibilityInputs('NAVI_STORIES_SHOW_DESKTOP', 'NAVI_STORIES_SHOW_MOBILE')),
                 'submit' => [
                     'title' => $this->l('Enregistrer'),
@@ -460,6 +533,19 @@ class Navi extends Module
                     'icon' => 'icon-paint-brush',
                 ],
                 'input' => [
+                    [
+                        'type' => 'select',
+                        'label' => $this->l('Position du bouton flottant'),
+                        'name' => 'NAVI_FAB_POSITION',
+                        'options' => [
+                            'query' => [
+                                ['id' => 'right', 'name' => $this->l('Droite')],
+                                ['id' => 'left', 'name' => $this->l('Gauche')],
+                            ],
+                            'id' => 'id',
+                            'name' => 'name',
+                        ],
+                    ],
                     [
                         'type' => 'color',
                         'label' => $this->l("Couleur d'accent"),
@@ -516,6 +602,11 @@ class Navi extends Module
             'NAVI_RADIUS_IMAGE' => Configuration::get('NAVI_RADIUS_IMAGE') !== false ? Configuration::get('NAVI_RADIUS_IMAGE') : self::DEFAULT_RADIUS_IMAGE,
             'NAVI_STORIES_SHOW_LABEL' => (bool) Configuration::get('NAVI_STORIES_SHOW_LABEL'),
             'NAVI_STORIES_BORDER_WIDTH' => Configuration::get('NAVI_STORIES_BORDER_WIDTH') !== false ? Configuration::get('NAVI_STORIES_BORDER_WIDTH') : self::DEFAULT_STORIES_BORDER_WIDTH,
+            'NAVI_STORIES_COLOR_PHONE_BG' => Configuration::get('NAVI_STORIES_COLOR_PHONE_BG') ?: self::DEFAULT_STORIES_PHONE_BG,
+            'NAVI_STORIES_COLOR_CLOSE_ICON' => Configuration::get('NAVI_STORIES_COLOR_CLOSE_ICON') ?: self::DEFAULT_STORIES_CLOSE_ICON,
+            'NAVI_STORIES_COLOR_CLOSE_BG' => Configuration::get('NAVI_STORIES_COLOR_CLOSE_BG') ?: self::DEFAULT_STORIES_CLOSE_BG,
+            'NAVI_STORIES_COLOR_OVERLAY' => Configuration::get('NAVI_STORIES_COLOR_OVERLAY') ?: self::DEFAULT_STORIES_OVERLAY_BG,
+            'NAVI_FAB_POSITION' => Configuration::get('NAVI_FAB_POSITION') ?: self::DEFAULT_FAB_POSITION,
         ];
 
         foreach (self::VISIBILITY_TOGGLES as $desktopKey => $info) {
@@ -595,6 +686,10 @@ class Navi extends Module
         $radiusButton = max(0, (int) (Configuration::get('NAVI_RADIUS_BUTTON') !== false ? Configuration::get('NAVI_RADIUS_BUTTON') : self::DEFAULT_RADIUS_BUTTON));
         $radiusImage = max(0, (int) (Configuration::get('NAVI_RADIUS_IMAGE') !== false ? Configuration::get('NAVI_RADIUS_IMAGE') : self::DEFAULT_RADIUS_IMAGE));
         $storiesBorderWidth = max(0, (int) (Configuration::get('NAVI_STORIES_BORDER_WIDTH') !== false ? Configuration::get('NAVI_STORIES_BORDER_WIDTH') : self::DEFAULT_STORIES_BORDER_WIDTH));
+        $storiesPhoneBg = $this->sanitizeHexColor(Configuration::get('NAVI_STORIES_COLOR_PHONE_BG'), self::DEFAULT_STORIES_PHONE_BG);
+        $storiesCloseIcon = $this->sanitizeHexColor(Configuration::get('NAVI_STORIES_COLOR_CLOSE_ICON'), self::DEFAULT_STORIES_CLOSE_ICON);
+        $storiesCloseBg = $this->sanitizeHexColor(Configuration::get('NAVI_STORIES_COLOR_CLOSE_BG'), self::DEFAULT_STORIES_CLOSE_BG);
+        $storiesOverlayBg = $this->sanitizeHexColor(Configuration::get('NAVI_STORIES_COLOR_OVERLAY'), self::DEFAULT_STORIES_OVERLAY_BG);
 
         $css = 'html:root{'
             . '--navi-color-accent:' . $accent . ';'
@@ -602,6 +697,10 @@ class Navi extends Module
             . '--navi-radius-button:' . $radiusButton . 'px;'
             . '--navi-radius-image:' . $radiusImage . 'px;'
             . '--navi-story-border-width:' . $storiesBorderWidth . 'px;'
+            . '--navi-story-phone-bg:' . $storiesPhoneBg . ';'
+            . '--navi-story-close-icon:' . $storiesCloseIcon . ';'
+            . '--navi-story-close-bg:' . $storiesCloseBg . ';'
+            . '--navi-story-overlay-bg:' . $storiesOverlayBg . ';'
             . '}';
 
         if (!Configuration::get('NAVI_STORIES_SHOW_LABEL')) {
@@ -876,6 +975,7 @@ class Navi extends Module
             'navi_cookie_stats_checked' => isset($_COOKIE['navi_consent_stats']) && $_COOKIE['navi_consent_stats'] === '1',
             'navi_cookie_mkt_checked' => isset($_COOKIE['navi_consent_mkt']) && $_COOKIE['navi_consent_mkt'] === '1',
             'navi_gear_svg' => $this->getGearSvg(),
+            'navi_fab_position' => in_array(Configuration::get('NAVI_FAB_POSITION'), ['left', 'right'], true) ? Configuration::get('NAVI_FAB_POSITION') : self::DEFAULT_FAB_POSITION,
         ]);
 
         return $this->fetch('module:' . $this->name . '/views/templates/hook/footer.tpl');

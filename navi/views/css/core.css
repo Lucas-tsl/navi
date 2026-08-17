@@ -27,6 +27,10 @@
     --navi-radius-button: 4px;
     --navi-radius-image: 4px;
     --navi-story-border-width: 2px;
+    --navi-story-phone-bg: #111111;
+    --navi-story-close-icon: #ffffff;
+    --navi-story-close-bg: #000000;
+    --navi-story-overlay-bg: #000000;
 }
 
 /* Lien d'évitement (WCAG 2.4.1). */
