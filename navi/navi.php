@@ -22,7 +22,7 @@ class Navi extends Module
     {
         $this->name = 'navi';
         $this->tab = 'front_office_features';
-        $this->version = '1.1.0';
+        $this->version = '1.1.1';
         $this->author = 'Troteseil Lucas';
         $this->need_instance = 0;
         $this->bootstrap = true;
@@ -59,23 +59,81 @@ class Navi extends Module
      * - displayAfterProductThumbs : rendu des bulles en fiche produit (un
      *   seul hook de rendu, pas deux — évite le double-affichage).
      */
+    const HOOKS = [
+        'displayHeader',
+        'actionFrontControllerSetMedia',
+        'displayBeforeBodyClosingTag',
+        'displayAdminProductsExtra',
+        'actionObjectProductAddAfter',
+        'actionObjectProductUpdateAfter',
+        'actionObjectProductDeleteAfter',
+        'displayAfterProductThumbs',
+    ];
+
+    /**
+     * Chaque étape s'exécute indépendamment (pas de chaîne && qui
+     * s'arrêterait silencieusement à la première étape en échec) : sur un
+     * shop avec beaucoup de modules déjà installés, l'enregistrement d'un
+     * hook peut occasionnellement échouer sans lever d'exception PHP
+     * exploitable (observé en conditions réelles) — mieux vaut tenter
+     * toutes les étapes et remonter une erreur visible dans le Back Office
+     * que de laisser un module à moitié installé sans aucun signal. Voir
+     * aussi ensureFullyInstalled(), qui complète automatiquement ce qui
+     * manquerait encore au prochain accès à Configurer.
+     */
     public function install()
     {
-        return parent::install()
-            && $this->registerHook('displayHeader')
-            && $this->registerHook('actionFrontControllerSetMedia')
-            && $this->registerHook('displayBeforeBodyClosingTag')
-            && $this->registerHook('displayAdminProductsExtra')
-            && $this->registerHook('actionObjectProductAddAfter')
-            && $this->registerHook('actionObjectProductUpdateAfter')
-            && $this->registerHook('actionObjectProductDeleteAfter')
-            && $this->registerHook('displayAfterProductThumbs')
-            && $this->installStoriesTable()
-            && $this->installUploadDir()
-            && Configuration::updateValue('NAVI_COOKIE_TEXT', $this->getDefaultCookieText())
-            && Configuration::updateValue('NAVI_COOKIE_PRIVACY_URL', '')
-            && Configuration::updateValue('NAVI_COOKIE_LEGAL_URL', '')
-            && Configuration::updateValue('NAVI_COOKIE_LOGO_URL', $this->getDefaultLogoUrl());
+        if (!parent::install()) {
+            return false;
+        }
+
+        $ok = true;
+
+        foreach (self::HOOKS as $hookName) {
+            if (!$this->registerHook($hookName)) {
+                $this->_errors[] = sprintf('Navi: failed to register hook "%s".', $hookName);
+                $ok = false;
+            }
+        }
+
+        if (!$this->installStoriesTable()) {
+            $this->_errors[] = $this->l('Navi : échec de la création de la table des stories.');
+            $ok = false;
+        }
+
+        if (!$this->installUploadDir()) {
+            $this->_errors[] = $this->l("Navi : échec de la création du dossier d'upload.");
+            $ok = false;
+        }
+
+        Configuration::updateValue('NAVI_COOKIE_TEXT', $this->getDefaultCookieText());
+        Configuration::updateValue('NAVI_COOKIE_PRIVACY_URL', '');
+        Configuration::updateValue('NAVI_COOKIE_LEGAL_URL', '');
+        Configuration::updateValue('NAVI_COOKIE_LOGO_URL', $this->getDefaultLogoUrl());
+
+        return $ok;
+    }
+
+    /**
+     * Filet de sécurité : si l'installation initiale s'est arrêtée en
+     * route (voir le commentaire d'install() ci-dessus), complète
+     * silencieusement ce qui manque au premier accès à Modules > Navi >
+     * Configurer, plutôt que d'exiger une désinstallation/réinstallation
+     * complète pour corriger un état partiel.
+     */
+    private function ensureFullyInstalled()
+    {
+        foreach (self::HOOKS as $hookName) {
+            if (!Hook::isModuleRegisteredOnHook($this, $hookName, $this->context->shop->id)) {
+                $this->registerHook($hookName);
+            }
+        }
+
+        if (!Db::getInstance()->executeS('SHOW TABLES LIKE \'' . _DB_PREFIX_ . self::STORIES_TABLE . '\'')) {
+            $this->installStoriesTable();
+        }
+
+        $this->installUploadDir();
     }
 
     public function uninstall()
@@ -133,6 +191,8 @@ class Navi extends Module
      */
     public function getContent()
     {
+        $this->ensureFullyInstalled();
+
         $output = '';
 
         if (Tools::isSubmit('submitNaviCookie')) {

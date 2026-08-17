@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.1.1
+
+Durcissement de `install()` — observé en conditions réelles (installation
+via upload zip sur un shop avec de nombreux modules déjà installés) :
+l'ancienne chaîne `&&` pouvait s'arrêter silencieusement en cours de route
+(certains hooks jamais enregistrés, table jamais créée), sans message
+d'erreur exploitable, laissant le module à moitié installé.
+
+- Chaque étape d'installation (hooks, table, dossier d'upload) s'exécute
+  désormais indépendamment ; tout échec est collecté et remonté comme
+  erreur visible dans le Back Office au lieu d'échouer silencieusement.
+- Nouveau filet de sécurité `ensureFullyInstalled()` : si une installation
+  précédente s'est arrêtée en route, un simple accès à *Modules > Navi >
+  Configurer* complète automatiquement ce qui manque (hooks, table),
+  sans nécessiter une désinstallation/réinstallation complète.
+
 ## 1.1.0
 
 Gestion native des bulles vidéo "stories" — absorbe la fonctionnalité
