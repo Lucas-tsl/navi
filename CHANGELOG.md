@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.7.0
+
+**Onglet "Stories" de la fiche produit modernisé** (`views/templates/admin/story-fields.tpl`) :
+
+- 4 stories affichées en cartes (grille 2 colonnes) plutôt qu'empilées
+  verticalement, avec badge "Vide"/"Configurée" par carte.
+- Aperçu en direct : coller une URL ou un identifiant YouTube affiche
+  immédiatement sa vignette, sans attendre l'enregistrement.
+- Retour visuel sur le fichier importé (nom, taille) avec avertissement
+  si la taille dépasse la limite autorisée, avant même de soumettre le
+  formulaire.
+- Champs "prévisualisation personnalisée" (URL MP4 / import) repliés
+  dans un `<details>` — le cas courant (juste un lien YouTube) reste
+  visible en premier.
+- Corrigé au passage : un quantificateur regex (`{11}`) dans le
+  JavaScript embarqué était silencieusement interprété par Smarty comme
+  un littéral numérique, avalant les accolades et cassant l'extraction
+  d'identifiant YouTube — le script concerné est maintenant protégé par
+  `{literal}...{/literal}`.
+
 ## 1.6.0
 
 - **Configure réorganisé en onglets** : un onglet par fonctionnalité (Aide,

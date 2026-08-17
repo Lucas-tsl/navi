@@ -17,8 +17,9 @@ widgets indépendants.
   panier" du thème, y compris son état rupture de stock).
 - ✅ Gestion native de bulles vidéo "stories" par produit : onglet
   d'administration sur la fiche produit (jusqu'à 4 stories, vidéo YouTube
-  ou upload MP4), rendu front (panneau desktop + plein écran mobile).
-  Aucune dépendance à un module tiers.
+  ou upload MP4, cartes avec aperçu YouTube en direct), rendu front
+  (panneau desktop + plein écran mobile). Aucune dépendance à un module
+  tiers.
 - ✅ Mini-panier automatique (optionnel, désactivé par défaut).
 - ✅ Apparence personnalisable depuis le Back Office (couleur d'accent,
   arrondi des boutons, arrondi de l'image produit).

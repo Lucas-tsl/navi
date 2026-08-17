@@ -68,7 +68,7 @@ class Navi extends Module
     {
         $this->name = 'navi';
         $this->tab = 'front_office_features';
-        $this->version = '1.6.0';
+        $this->version = '1.7.0';
         $this->author = 'Troteseil Lucas';
         $this->need_instance = 0;
         $this->bootstrap = true;
@@ -1500,17 +1500,20 @@ class Navi extends Module
 
         $slots = [];
         for ($index = 1; $index <= self::STORY_LIMIT; $index++) {
+            $youtube = $existing[$index]['youtube'] ?? '';
             $slots[] = [
                 'index' => $index,
-                'youtube' => $existing[$index]['youtube'] ?? '',
+                'youtube' => $youtube,
                 'preview' => $existing[$index]['preview'] ?? '',
                 'label' => $existing[$index]['label'] ?? '',
+                'thumbnail' => $youtube !== '' ? 'https://img.youtube.com/vi/' . $youtube . '/mqdefault.jpg' : '',
             ];
         }
 
         $this->context->smarty->assign([
             'navi_story_slots' => $slots,
             'navi_story_max_mb' => self::MAX_UPLOAD_BYTES / 1048576,
+            'navi_story_max_bytes' => self::MAX_UPLOAD_BYTES,
         ]);
 
         return $this->fetch('module:' . $this->name . '/views/templates/admin/story-fields.tpl');
