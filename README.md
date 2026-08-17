@@ -179,6 +179,16 @@ aux signaux `gtag('consent', ...)`. Deux façons de les synchroniser :
 `navi.php` (`$this->version`) et `config.xml` (`<version>`) doivent rester
 identiques — vérifié par `scripts/check-version-sync.sh`, exécuté en CI.
 
+### Déploiement local
+
+`scripts/deploy-local.sh` copie `navi/` vers une instance PrestaShop de dev
+(Docker), corrige les permissions (`chown www-data`) et purge le cache
+CCC du thème — le cycle manuel (`docker cp` + `chown` + purge de
+`themes/<thème>/assets/cache/`) refait jusque-là à chaque itération.
+Variables d'environnement : `NAVI_DEPLOY_CONTAINER` (défaut `presta_web`),
+`NAVI_DEPLOY_THEME` (défaut `physiomins`), `NAVI_DEPLOY_BASE_URL` (défaut
+`http://localhost:8080`).
+
 ### Tests
 
 Suite Playwright dans `tests/` — voir `tests/README.md`. Nécessite une
