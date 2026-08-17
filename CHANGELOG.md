@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.5.1
+
+Correction du curseur "épaisseur" ajouté en 1.5.0 : contrôlait par erreur
+une bordure CSS sur l'écran vidéo au lieu du **padding du mockup de
+téléphone** (l'espace entre le bord du téléphone et l'écran, qui donne
+visuellement l'impression d'un cadre) — c'était le vrai sens de la demande
+initiale. `NAVI_STORIES_VIDEO_BORDER_WIDTH` remplacé par
+`NAVI_STORIES_PHONE_PADDING` ; `upgrade/upgrade-1.5.1.php` reprend la
+valeur déjà choisie si elle existe.
+
 ## 1.5.0
 
 - **Stories — aspect de la vidéo** : nouveau bloc dans le Configure avec

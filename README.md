@@ -29,8 +29,8 @@ widgets indépendants.
   stories (mockup, croix, plein écran mobile) personnalisables.
 - ✅ Bloc Aide/Documentation dans le Configure (lien repo + création
   d'issue pré-remplie).
-- ✅ Épaisseur de la bordure vidéo et taille du mockup de téléphone des
-  stories réglables via curseurs gradués, avec aperçu en direct.
+- ✅ Épaisseur du cadre et taille du mockup de téléphone des stories
+  réglables via curseurs gradués, avec aperçu en direct.
 
 ## Installation
 
