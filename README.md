@@ -1,5 +1,7 @@
 # Navi
 
+<img src="assets/logo.png" alt="Logo Navi" width="96" height="96">
+
 Hub d'engagement flottant pour PrestaShop : un seul bouton flottant qui
 regroupe plusieurs modules d'engagement client — consentement cookies
 (Google Consent Mode v2), accessibilité (taille du texte, contraste,

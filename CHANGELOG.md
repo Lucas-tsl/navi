@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.7.1
+
+- Logo du module (`navi/logo.png`, 32×32) — affiché dans le Gestionnaire
+  de modules du Back Office. Version haute résolution (`assets/logo.png`,
+  256×256) ajoutée pour le README et un futur usage marketplace.
+
 ## 1.7.0
 
 **Onglet "Stories" de la fiche produit modernisé** (`views/templates/admin/story-fields.tpl`) :
