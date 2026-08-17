@@ -13,11 +13,16 @@ if (!defined('_PS_VERSION_')) {
 
 class Navi extends Module
 {
+    const STORIES_TABLE = 'navi_story';
+    const STORY_LIMIT = 4;
+    const UPLOAD_SUBDIR = 'views/uploads';
+    const MAX_UPLOAD_BYTES = 20971520; // 20 Mo
+
     public function __construct()
     {
         $this->name = 'navi';
         $this->tab = 'front_office_features';
-        $this->version = '1.0.0';
+        $this->version = '1.1.0';
         $this->author = 'Troteseil Lucas';
         $this->need_instance = 0;
         $this->bootstrap = true;
@@ -27,25 +32,32 @@ class Navi extends Module
         $this->displayName = $this->l('Navi');
         $this->description = $this->l(
             "Hub d'engagement flottant : consentement cookies (Google Consent " .
-            'Mode v2), accessibilité (taille du texte, contraste, curseur) et ' .
-            'ajout au panier sticky sur les fiches produit, pilotés depuis un ' .
-            'bouton unique.'
+            'Mode v2), accessibilité (taille du texte, contraste, curseur), ' .
+            'ajout au panier sticky et bulles vidéo "stories" sur les fiches ' .
+            'produit, pilotés depuis un bouton unique.'
         );
         $this->ps_versions_compliancy = ['min' => '1.7', 'max' => '8.99.99'];
 
-        $this->confirmUninstall = $this->l('Supprimer ce module désactivera le bouton flottant et tous ses modules.');
+        $this->confirmUninstall = $this->l('Supprimer ce module désactivera le bouton flottant, tous ses modules, et supprimera les stories enregistrées (vidéos incluses).');
     }
 
     /**
      * Hooks utilisés :
      * - displayHeader : pose gtag('consent','default', ...) le plus tôt
-     *   possible dans <head>, AVANT que Google Analytics ne charge — sans
-     *   ça, le consentement par défaut ne bloque rien puisque le tracking a
-     *   déjà eu l'occasion de démarrer.
-     * - actionFrontControllerSetMedia : point d'entrée recommandé (PS 1.7+)
-     *   pour enregistrer CSS/JS uniquement sur les pages front-office.
-     * - displayBeforeBodyClosingTag : injecte la coquille du bouton flottant
-     *   juste avant </body>.
+     *   possible dans <head>, AVANT que Google Analytics ne charge.
+     * - actionFrontControllerSetMedia : enregistrement CSS/JS front-office.
+     * - displayBeforeBodyClosingTag : coquille du bouton flottant.
+     * - displayAdminProductsExtra : onglet de gestion des stories sur la
+     *   fiche produit (Back Office).
+     * - actionObjectProductAddAfter / actionObjectProductUpdateAfter :
+     *   sauvegarde des stories soumises avec le formulaire produit — AUCUN
+     *   contrôleur front dédié : la sauvegarde n'est possible qu'au travers
+     *   d'un enregistrement produit réel, donc déjà protégée par la session
+     *   employé et le jeton CSRF que PrestaShop applique lui-même à ce
+     *   formulaire (voir handleProductSave()).
+     * - actionObjectProductDeleteAfter : nettoyage des stories orphelines.
+     * - displayAfterProductThumbs : rendu des bulles en fiche produit (un
+     *   seul hook de rendu, pas deux — évite le double-affichage).
      */
     public function install()
     {
@@ -53,18 +65,34 @@ class Navi extends Module
             && $this->registerHook('displayHeader')
             && $this->registerHook('actionFrontControllerSetMedia')
             && $this->registerHook('displayBeforeBodyClosingTag')
+            && $this->registerHook('displayAdminProductsExtra')
+            && $this->registerHook('actionObjectProductAddAfter')
+            && $this->registerHook('actionObjectProductUpdateAfter')
+            && $this->registerHook('actionObjectProductDeleteAfter')
+            && $this->registerHook('displayAfterProductThumbs')
+            && $this->installStoriesTable()
+            && $this->installUploadDir()
             && Configuration::updateValue('NAVI_COOKIE_TEXT', $this->getDefaultCookieText())
             && Configuration::updateValue('NAVI_COOKIE_PRIVACY_URL', '')
             && Configuration::updateValue('NAVI_COOKIE_LEGAL_URL', '')
             && Configuration::updateValue('NAVI_COOKIE_LOGO_URL', $this->getDefaultLogoUrl());
     }
 
+    public function uninstall()
+    {
+        return parent::uninstall()
+            && $this->uninstallStoriesTable()
+            && $this->uninstallUploadDir()
+            && Configuration::deleteByName('NAVI_COOKIE_TEXT')
+            && Configuration::deleteByName('NAVI_COOKIE_PRIVACY_URL')
+            && Configuration::deleteByName('NAVI_COOKIE_LEGAL_URL')
+            && Configuration::deleteByName('NAVI_COOKIE_LOGO_URL');
+    }
+
     /**
      * Logo du thème (Configurer > Apparence > Logos, PS_LOGO) converti en
      * URL publique complète — pré-remplit le champ « Logo » de la bannière
      * cookie sans obliger l'admin à ressaisir une URL déjà connue du site.
-     * Reste modifiable ensuite dans Configurer (autre logo, ou vide pour ne
-     * pas en afficher).
      */
     public function getDefaultLogoUrl()
     {
@@ -90,15 +118,6 @@ class Navi extends Module
         return $idCms ? Context::getContext()->link->getCMSLink($idCms) : '';
     }
 
-    public function uninstall()
-    {
-        return parent::uninstall()
-            && Configuration::deleteByName('NAVI_COOKIE_TEXT')
-            && Configuration::deleteByName('NAVI_COOKIE_PRIVACY_URL')
-            && Configuration::deleteByName('NAVI_COOKIE_LEGAL_URL')
-            && Configuration::deleteByName('NAVI_COOKIE_LOGO_URL');
-    }
-
     private function getDefaultCookieText()
     {
         return $this->l(
@@ -109,7 +128,8 @@ class Navi extends Module
 
     /**
      * Réglages back-office (Modules > Navi > Configurer) : texte de la
-     * bannière cookie et liens légaux.
+     * bannière cookie et liens légaux. La gestion des stories se fait
+     * directement sur chaque fiche produit (onglet Navi), pas ici.
      */
     public function getContent()
     {
@@ -261,8 +281,10 @@ class Navi extends Module
             ['position' => 'bottom', 'priority' => 200]
         );
 
-        // Panier sticky : chargé uniquement sur les fiches produit — inutile
-        // ailleurs, ce panneau n'a rien à afficher hors d'une page produit.
+        $stories = [];
+
+        // Panier sticky + stories : chargés uniquement sur les fiches
+        // produit — inutiles ailleurs.
         if ($this->isProductPage()) {
             $this->context->controller->registerStylesheet(
                 'navi-sticky-cart',
@@ -283,52 +305,81 @@ class Navi extends Module
                     'closeLabel' => $this->l('Fermer'),
                 ],
             ]);
+
+            $idProduct = $this->getCurrentProductId();
+            if ($idProduct) {
+                $stories = $this->getStoriesForProduct($idProduct);
+            }
+
+            if (!empty($stories)) {
+                $this->context->controller->registerStylesheet(
+                    'navi-stories',
+                    'modules/' . $this->name . '/views/css/stories.css',
+                    ['media' => 'all', 'priority' => 200]
+                );
+                $this->context->controller->registerJavascript(
+                    'navi-stories',
+                    'modules/' . $this->name . '/views/js/stories.js',
+                    ['position' => 'bottom', 'priority' => 200]
+                );
+                Media::addJsDef([
+                    'naviStoriesConfig' => [
+                        'closeLabel' => $this->l('Fermer'),
+                        'prevLabel' => $this->l('Story précédente'),
+                        'nextLabel' => $this->l('Story suivante'),
+                    ],
+                ]);
+            }
         }
 
-        // Config JS du bouton flottant : liste des modules actifs et leurs
-        // conditions d'affichage dans le menu. Pas d'entrée "stories" ici —
-        // la gestion native des bulles vidéo arrive dans un chantier
-        // ultérieur (voir CHANGELOG).
+        $items = [
+            // Icône "retour en haut" : toujours proposée par le noyau,
+            // visible uniquement après 50% de scroll — pas un module, elle
+            // n'a pas d'état activable.
+            [
+                'id' => 'top',
+                'icon' => '↑',
+                'label' => $this->l('Haut de page'),
+                'shortLabel' => $this->l('Haut'),
+                'action' => 'scroll-top',
+                'condition' => 'scroll',
+                'scrollThreshold' => 50,
+            ],
+            [
+                'id' => 'accessibility',
+                'label' => $this->l('Accessibilité'),
+                'shortLabel' => $this->l('Accessibilité'),
+                'action' => 'open-accessibility-panel',
+                'condition' => '',
+                'iconSvg' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4" r="1.5" fill="currentColor" stroke="none"></circle><path d="M11 6v6h5"></path><path d="M9 12l4 2 3 6"></path><circle cx="9" cy="16" r="5"></circle></svg>',
+            ],
+            [
+                'id' => 'cookie-consent',
+                'label' => $this->l('Consentement cookies'),
+                'shortLabel' => $this->l('Cookies'),
+                'action' => 'open-cookie-modal',
+                'condition' => '',
+                'iconSvg' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><circle cx="8.5" cy="10.5" r="1" fill="currentColor" stroke="none"></circle><circle cx="15" cy="9" r="1" fill="currentColor" stroke="none"></circle><circle cx="15.5" cy="15" r="1" fill="currentColor" stroke="none"></circle><circle cx="9" cy="15.5" r="1" fill="currentColor" stroke="none"></circle></svg>',
+            ],
+            [
+                'id' => 'sticky-cart',
+                'label' => $this->l('Ajouter au panier'),
+                'shortLabel' => $this->l('Panier'),
+                'action' => 'open-sticky-cart',
+                'condition' => 'is_product',
+                'iconSvg' => '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 22 22" fill="none"><path fill="currentColor" d="M15.95 6H19.7V17.875C19.7 18.7344 19.3875 19.4635 18.7625 20.0625C18.1635 20.6875 17.4344 21 16.575 21H5.325C4.46563 21 3.72344 20.6875 3.09844 20.0625C2.49948 19.4635 2.2 18.7344 2.2 17.875V6H5.95C5.95 4.61979 6.43177 3.44792 7.39531 2.48438C8.3849 1.49479 9.56979 1 10.95 1C12.3302 1 13.5021 1.49479 14.4656 2.48438C15.4552 3.44792 15.95 4.61979 15.95 6ZM13.1375 3.8125C12.5385 3.1875 11.8094 2.875 10.95 2.875C10.0906 2.875 9.34844 3.1875 8.72344 3.8125C8.12448 4.41146 7.825 5.14062 7.825 6H14.075C14.075 5.14062 13.7625 4.41146 13.1375 3.8125ZM17.825 17.875V7.875H15.95V9.4375C15.95 9.69792 15.8589 9.91927 15.6766 10.1016C15.4943 10.2839 15.2729 10.375 15.0125 10.375C14.7521 10.375 14.5307 10.2839 14.3484 10.1016C14.1661 9.91927 14.075 9.69792 14.075 9.4375V7.875H7.825V9.4375C7.825 9.69792 7.73385 9.91927 7.55156 10.1016C7.36927 10.2839 7.14792 10.375 6.8875 10.375C6.62708 10.375 6.40573 10.2839 6.22344 10.1016C6.04115 9.91927 5.95 9.69792 5.95 9.4375V7.875H4.075V17.875C4.075 18.2135 4.19219 18.5 4.42656 18.7344C4.68698 18.9948 4.98646 19.125 5.325 19.125H16.575C16.9135 19.125 17.2 18.9948 17.4344 18.7344C17.6948 18.5 17.825 18.2135 17.825 17.875Z"></path></svg>',
+            ],
+        ];
+
+        // Pas d'entrée "stories" dans ce menu : les bulles sont des
+        // boutons autonomes affichés directement sur la fiche produit
+        // (voir hookDisplayAfterProductThumbs), pas une fonctionnalité
+        // qu'on ouvre depuis l'engrenage — $stories sert seulement à
+        // conditionner l'enregistrement de stories.css/js ci-dessus.
+
         Media::addJsDef([
             'naviConfig' => [
-                'items' => [
-                    // Icône "retour en haut" : toujours proposée par le
-                    // noyau, visible uniquement après 50% de scroll — pas un
-                    // module, elle n'a pas d'état activable.
-                    [
-                        'id' => 'top',
-                        'icon' => '↑',
-                        'label' => $this->l('Haut de page'),
-                        'shortLabel' => $this->l('Haut'),
-                        'action' => 'scroll-top',
-                        'condition' => 'scroll',
-                        'scrollThreshold' => 50,
-                    ],
-                    [
-                        'id' => 'accessibility',
-                        'label' => $this->l('Accessibilité'),
-                        'shortLabel' => $this->l('Accessibilité'),
-                        'action' => 'open-accessibility-panel',
-                        'condition' => '',
-                        'iconSvg' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4" r="1.5" fill="currentColor" stroke="none"></circle><path d="M11 6v6h5"></path><path d="M9 12l4 2 3 6"></path><circle cx="9" cy="16" r="5"></circle></svg>',
-                    ],
-                    [
-                        'id' => 'cookie-consent',
-                        'label' => $this->l('Consentement cookies'),
-                        'shortLabel' => $this->l('Cookies'),
-                        'action' => 'open-cookie-modal',
-                        'condition' => '',
-                        'iconSvg' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><circle cx="8.5" cy="10.5" r="1" fill="currentColor" stroke="none"></circle><circle cx="15" cy="9" r="1" fill="currentColor" stroke="none"></circle><circle cx="15.5" cy="15" r="1" fill="currentColor" stroke="none"></circle><circle cx="9" cy="15.5" r="1" fill="currentColor" stroke="none"></circle></svg>',
-                    ],
-                    [
-                        'id' => 'sticky-cart',
-                        'label' => $this->l('Ajouter au panier'),
-                        'shortLabel' => $this->l('Panier'),
-                        'action' => 'open-sticky-cart',
-                        'condition' => 'is_product',
-                        'iconSvg' => '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 22 22" fill="none"><path fill="currentColor" d="M15.95 6H19.7V17.875C19.7 18.7344 19.3875 19.4635 18.7625 20.0625C18.1635 20.6875 17.4344 21 16.575 21H5.325C4.46563 21 3.72344 20.6875 3.09844 20.0625C2.49948 19.4635 2.2 18.7344 2.2 17.875V6H5.95C5.95 4.61979 6.43177 3.44792 7.39531 2.48438C8.3849 1.49479 9.56979 1 10.95 1C12.3302 1 13.5021 1.49479 14.4656 2.48438C15.4552 3.44792 15.95 4.61979 15.95 6ZM13.1375 3.8125C12.5385 3.1875 11.8094 2.875 10.95 2.875C10.0906 2.875 9.34844 3.1875 8.72344 3.8125C8.12448 4.41146 7.825 5.14062 7.825 6H14.075C14.075 5.14062 13.7625 4.41146 13.1375 3.8125ZM17.825 17.875V7.875H15.95V9.4375C15.95 9.69792 15.8589 9.91927 15.6766 10.1016C15.4943 10.2839 15.2729 10.375 15.0125 10.375C14.7521 10.375 14.5307 10.2839 14.3484 10.1016C14.1661 9.91927 14.075 9.69792 14.075 9.4375V7.875H7.825V9.4375C7.825 9.69792 7.73385 9.91927 7.55156 10.1016C7.36927 10.2839 7.14792 10.375 6.8875 10.375C6.62708 10.375 6.40573 10.2839 6.22344 10.1016C6.04115 9.91927 5.95 9.69792 5.95 9.4375V7.875H4.075V17.875C4.075 18.2135 4.19219 18.5 4.42656 18.7344C4.68698 18.9948 4.98646 19.125 5.325 19.125H16.575C16.9135 19.125 17.2 18.9948 17.4344 18.7344C17.6948 18.5 17.825 18.2135 17.825 17.875Z"></path></svg>',
-                    ],
-                ],
+                'items' => $items,
                 'isProduct' => (bool) $this->isProductPage(),
                 'closeLabel' => $this->l('Fermer'),
             ],
@@ -341,11 +392,63 @@ class Navi extends Module
 
     /**
      * Conditionne les modules qui ne doivent apparaître que sur une fiche
-     * produit (panier sticky).
+     * produit (panier sticky, stories).
      */
     private function isProductPage()
     {
         return isset($this->context->controller) && $this->context->controller instanceof ProductController;
+    }
+
+    /**
+     * `id_product` n'est pas toujours présent dans l'URL d'une fiche
+     * produit selon la configuration de réécriture d'URL du shop — replis
+     * successifs sur la variable Smarty `product` assignée par le
+     * ProductController natif avant d'abandonner.
+     */
+    private function getCurrentProductId()
+    {
+        if (!$this->isProductPage()) {
+            return 0;
+        }
+
+        $idProduct = (int) Tools::getValue('id_product');
+        if ($idProduct > 0) {
+            return $idProduct;
+        }
+
+        $product = $this->context->smarty->getTemplateVars('product');
+        if (is_array($product) && !empty($product['id_product'])) {
+            return (int) $product['id_product'];
+        }
+        if (is_object($product) && isset($product->id)) {
+            return (int) $product->id;
+        }
+
+        return 0;
+    }
+
+    /**
+     * Même logique de replis que getCurrentProductId(), mais à partir des
+     * paramètres reçus par un hook d'administration plutôt que du contexte
+     * front — la clé exacte présente dans $params varie selon le hook et
+     * la version de PrestaShop.
+     */
+    private function resolveProductIdFromHookParams($params)
+    {
+        if (is_array($params)) {
+            foreach (['id_product', 'product_id', 'id'] as $key) {
+                if (!empty($params[$key]) && is_numeric($params[$key])) {
+                    return (int) $params[$key];
+                }
+            }
+            if (isset($params['product']) && is_object($params['product']) && isset($params['product']->id)) {
+                return (int) $params['product']->id;
+            }
+        }
+
+        $idProduct = (int) Tools::getValue('id_product');
+
+        return $idProduct > 0 ? $idProduct : 0;
     }
 
     /**
@@ -383,5 +486,353 @@ class Navi extends Module
     private function getGearSvg()
     {
         return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>';
+    }
+
+    // ================================================================
+    // Stories — gestion native des bulles vidéo produit.
+    //
+    // Absorbe la fonctionnalité auparavant déléguée au module tiers
+    // lstvideostory, en corrigeant au passage les points trouvés lors de
+    // l'analyse de ce module : sauvegarde exposée sur un contrôleur front
+    // public non protégé par un jeton vérifié (ici : aucun contrôleur
+    // front du tout, la sauvegarde ne passe QUE par le formulaire produit
+    // réel du Back Office, donc déjà couverte par la session employé et le
+    // jeton CSRF que PrestaShop applique lui-même) ; validation d'upload
+    // dupliquée à plusieurs endroits (ici centralisée) ; aucune limite de
+    // taille réellement appliquée (ici : MAX_UPLOAD_BYTES) ; aucun
+    // nettoyage des fichiers uploadés à la désinstallation (ici :
+    // uninstallUploadDir()).
+    // ================================================================
+
+    private function installStoriesTable()
+    {
+        return Db::getInstance()->execute(
+            'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . self::STORIES_TABLE . '` (
+                `id_navi_story` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+                `id_product` INT UNSIGNED NOT NULL,
+                `id_shop` INT UNSIGNED NOT NULL,
+                `story_index` TINYINT UNSIGNED NOT NULL,
+                `youtube` VARCHAR(32) NOT NULL,
+                `preview` VARCHAR(255) NOT NULL,
+                `label` VARCHAR(128) NOT NULL,
+                `date_add` DATETIME NOT NULL,
+                `date_upd` DATETIME NOT NULL,
+                PRIMARY KEY (`id_navi_story`),
+                UNIQUE KEY `shop_product_story` (`id_shop`, `id_product`, `story_index`),
+                KEY `id_product` (`id_product`)
+            ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8mb4'
+        );
+    }
+
+    private function uninstallStoriesTable()
+    {
+        return Db::getInstance()->execute('DROP TABLE IF EXISTS `' . _DB_PREFIX_ . self::STORIES_TABLE . '`');
+    }
+
+    private function getUploadDirectory()
+    {
+        return _PS_MODULE_DIR_ . $this->name . '/' . self::UPLOAD_SUBDIR . '/';
+    }
+
+    private function installUploadDir()
+    {
+        $dir = $this->getUploadDirectory();
+        if (!is_dir($dir) && !@mkdir($dir, 0755, true)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Contrairement à lstvideostory, qui ne supprimait que sa table à la
+     * désinstallation : les fichiers vidéo uploadés (potentiellement
+     * volumineux, et des données du marchand) doivent partir avec le
+     * module, pas rester orphelins sur le disque indéfiniment.
+     */
+    private function uninstallUploadDir()
+    {
+        $dir = $this->getUploadDirectory();
+        if (!is_dir($dir)) {
+            return true;
+        }
+
+        foreach (glob($dir . '*.mp4') as $file) {
+            @unlink($file);
+        }
+
+        return true;
+    }
+
+    /**
+     * Récupère les stories du produit pour la boutique courante — scoping
+     * par id_shop dès la conception (contrairement à lstvideostory, qui
+     * n'avait pas cette colonne et mélangeait les données entre boutiques
+     * d'un même multiboutique).
+     */
+    public function getStoriesForProduct($idProduct, $idShop = null)
+    {
+        if ($idShop === null) {
+            $idShop = (int) $this->context->shop->id;
+        }
+
+        return Db::getInstance()->executeS(
+            'SELECT * FROM `' . _DB_PREFIX_ . self::STORIES_TABLE . '`
+             WHERE `id_product` = ' . (int) $idProduct . '
+             AND `id_shop` = ' . (int) $idShop . '
+             ORDER BY `story_index` ASC'
+        );
+    }
+
+    private function deleteStoriesForProduct($idProduct, $idShop)
+    {
+        return Db::getInstance()->execute(
+            'DELETE FROM `' . _DB_PREFIX_ . self::STORIES_TABLE . '`
+             WHERE `id_product` = ' . (int) $idProduct . '
+             AND `id_shop` = ' . (int) $idShop
+        );
+    }
+
+    /**
+     * Accepte une URL YouTube complète (watch?v=, youtu.be/, /shorts/) ou
+     * un identifiant brut de 11 caractères déjà saisi tel quel.
+     */
+    private function extractYoutubeId($input)
+    {
+        $input = trim((string) $input);
+        if ($input === '') {
+            return '';
+        }
+
+        if (preg_match('#(?:youtube\.com/(?:watch\?v=|shorts/)|youtu\.be/)([A-Za-z0-9_-]{11})#', $input, $m)) {
+            return $m[1];
+        }
+
+        if (preg_match('/^[A-Za-z0-9_-]{11}$/', $input)) {
+            return $input;
+        }
+
+        return '';
+    }
+
+    /**
+     * Validation centralisée (contrairement à lstvideostory, dupliquée à 3
+     * endroits) : extension + MIME stricts (pas de repli sur
+     * application/octet-stream, trop permissif), taille plafonnée.
+     * Retourne un message d'erreur, ou '' si le fichier est accepté.
+     */
+    private function validateMp4Upload(array $file)
+    {
+        if (!isset($file['error']) || $file['error'] !== UPLOAD_ERR_OK) {
+            return $this->l('Erreur lors du transfert du fichier.');
+        }
+
+        if ($file['size'] > self::MAX_UPLOAD_BYTES) {
+            return sprintf($this->l('Le fichier dépasse la taille maximale autorisée (%d Mo).'), self::MAX_UPLOAD_BYTES / 1048576);
+        }
+
+        $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        if ($extension !== 'mp4') {
+            return $this->l('Seuls les fichiers .mp4 sont acceptés.');
+        }
+
+        if (function_exists('finfo_open')) {
+            $finfo = finfo_open(FILEINFO_MIME_TYPE);
+            $mime = finfo_file($finfo, $file['tmp_name']);
+            finfo_close($finfo);
+            if ($mime !== 'video/mp4') {
+                return $this->l('Le fichier ne semble pas être une vidéo MP4 valide.');
+            }
+        }
+
+        return '';
+    }
+
+    /**
+     * Déplace un upload validé vers le dossier du module et retourne son
+     * URL publique, ou null si aucun fichier valide n'a été soumis pour cet
+     * index (absence de fichier n'est pas une erreur : l'admin peut avoir
+     * laissé ce champ vide volontairement).
+     */
+    private function handleUploadedPreview($index, &$errors)
+    {
+        $field = 'navi_story_preview_file_' . (int) $index;
+        if (!isset($_FILES[$field]) || $_FILES[$field]['error'] === UPLOAD_ERR_NO_FILE) {
+            return null;
+        }
+
+        $file = $_FILES[$field];
+        $error = $this->validateMp4Upload($file);
+        if ($error !== '') {
+            $errors[] = sprintf('#%d — %s', $index, $error);
+
+            return null;
+        }
+
+        $filename = 'story_' . (int) $index . '_' . time() . '_' . bin2hex(random_bytes(4)) . '.mp4';
+        $destination = $this->getUploadDirectory() . $filename;
+
+        if (!move_uploaded_file($file['tmp_name'], $destination)) {
+            $errors[] = sprintf('#%d — %s', $index, $this->l("Échec de l'enregistrement du fichier."));
+
+            return null;
+        }
+
+        return $this->_path . self::UPLOAD_SUBDIR . '/' . $filename;
+    }
+
+    /**
+     * Point d'entrée UNIQUE de sauvegarde, appelé uniquement depuis un
+     * enregistrement produit réel (voir hookActionObjectProduct*After
+     * ci-dessous) — jamais depuis un contrôleur front public. Un flag
+     * statique évite un double traitement si plusieurs hooks du cycle de
+     * sauvegarde produit se déclenchaient pour la même requête (le bug
+     * inverse observé sur lstvideostory : un upload ne peut être déplacé
+     * qu'une seule fois, un second passage sur le même $_FILES échouerait
+     * silencieusement et effacerait la story qui venait d'être créée).
+     */
+    private static $storiesSavedThisRequest = [];
+
+    public function handleProductSave($idProduct)
+    {
+        $idProduct = (int) $idProduct;
+        if (!$idProduct || !Tools::isSubmit('navi_story_submitted')) {
+            return;
+        }
+
+        $idShop = (int) $this->context->shop->id;
+        $requestKey = $idShop . ':' . $idProduct;
+        if (isset(self::$storiesSavedThisRequest[$requestKey])) {
+            return;
+        }
+        self::$storiesSavedThisRequest[$requestKey] = true;
+
+        $errors = [];
+        $rows = [];
+        $now = date('Y-m-d H:i:s');
+
+        for ($index = 1; $index <= self::STORY_LIMIT; $index++) {
+            $youtube = $this->extractYoutubeId(Tools::getValue('navi_story_youtube_' . $index));
+            if ($youtube === '') {
+                continue; // slot vide : pas de story à cet emplacement.
+            }
+
+            $uploadedUrl = $this->handleUploadedPreview($index, $errors);
+            $preview = $uploadedUrl
+                ?: (string) Tools::getValue('navi_story_preview_' . $index)
+                ?: 'https://img.youtube.com/vi/' . $youtube . '/maxresdefault.jpg';
+
+            $rows[] = [
+                'id_product' => $idProduct,
+                'id_shop' => $idShop,
+                'story_index' => $index,
+                'youtube' => pSQL($youtube),
+                'preview' => pSQL($preview),
+                'label' => pSQL((string) Tools::getValue('navi_story_label_' . $index)),
+                'date_add' => $now,
+                'date_upd' => $now,
+            ];
+        }
+
+        $this->deleteStoriesForProduct($idProduct, $idShop);
+        foreach ($rows as $row) {
+            Db::getInstance()->insert(self::STORIES_TABLE, $row);
+        }
+
+        if (!empty($errors)) {
+            $this->context->controller->errors[] = $this->l('Stories Navi : certains fichiers ont été ignorés.') . ' ' . implode(' ', $errors);
+        }
+    }
+
+    public function hookActionObjectProductAddAfter($params)
+    {
+        if (isset($params['object']) && $params['object'] instanceof Product) {
+            $this->handleProductSave($params['object']->id);
+        }
+    }
+
+    public function hookActionObjectProductUpdateAfter($params)
+    {
+        if (isset($params['object']) && $params['object'] instanceof Product) {
+            $this->handleProductSave($params['object']->id);
+        }
+    }
+
+    public function hookActionObjectProductDeleteAfter($params)
+    {
+        if (isset($params['object']) && $params['object'] instanceof Product) {
+            Db::getInstance()->execute(
+                'DELETE FROM `' . _DB_PREFIX_ . self::STORIES_TABLE . '` WHERE `id_product` = ' . (int) $params['object']->id
+            );
+        }
+    }
+
+    /**
+     * Onglet "Navi" sur la fiche produit du Back Office — un seul hook
+     * (displayAdminProductsExtra), contrairement à lstvideostory qui en
+     * utilisait deux en parallèle pour la même fonction.
+     */
+    public function hookDisplayAdminProductsExtra($params)
+    {
+        $idProduct = $this->resolveProductIdFromHookParams($params);
+        if (!$idProduct) {
+            return '';
+        }
+
+        $existing = [];
+        foreach ($this->getStoriesForProduct($idProduct) as $row) {
+            $existing[(int) $row['story_index']] = $row;
+        }
+
+        $slots = [];
+        for ($index = 1; $index <= self::STORY_LIMIT; $index++) {
+            $slots[] = [
+                'index' => $index,
+                'youtube' => $existing[$index]['youtube'] ?? '',
+                'preview' => $existing[$index]['preview'] ?? '',
+                'label' => $existing[$index]['label'] ?? '',
+            ];
+        }
+
+        $this->context->smarty->assign([
+            'navi_story_slots' => $slots,
+            'navi_story_max_mb' => self::MAX_UPLOAD_BYTES / 1048576,
+        ]);
+
+        return $this->fetch('module:' . $this->name . '/views/templates/admin/story-fields.tpl');
+    }
+
+    /**
+     * Rendu des bulles en fiche produit — un seul hook (contrairement à
+     * lstvideostory, qui utilisait plusieurs hooks de rendu en parallèle et
+     * affichait parfois la bulle deux fois).
+     */
+    public function hookDisplayAfterProductThumbs($params)
+    {
+        if (!$this->isProductPage()) {
+            return '';
+        }
+
+        $idProduct = $this->getCurrentProductId();
+        if (!$idProduct) {
+            return '';
+        }
+
+        $stories = $this->getStoriesForProduct($idProduct);
+        if (empty($stories)) {
+            return '';
+        }
+
+        foreach ($stories as &$story) {
+            $story['preview_is_video'] = substr($story['preview'], -4) === '.mp4';
+        }
+        unset($story);
+
+        $this->context->smarty->assign([
+            'navi_stories' => $stories,
+            'navi_story_product_id' => $idProduct,
+        ]);
+
+        return $this->fetch('module:' . $this->name . '/views/templates/hook/story-bubbles.tpl');
     }
 }

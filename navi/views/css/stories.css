@@ -8,6 +8,82 @@
  * et n'a pas besoin d'être remesuré si les proportions changent.
  */
 
+/* ============================================================
+   Bulles affichées sur la fiche produit (voir
+   views/templates/hook/story-bubbles.tpl, Navi::hookDisplayAfterProductThumbs).
+   ============================================================ */
+.navi-story-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin: 16px 0;
+}
+
+.navi-story-bubble {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    width: auto;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.navi-story-bubble-circle {
+    position: relative;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 2px solid var(--navi-color-accent);
+    background: #000;
+}
+
+.navi-story-bubble-preview {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.navi-story-bubble-play {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.navi-story-bubble-play::after {
+    content: '';
+    width: 0;
+    height: 0;
+    margin-left: 2px;
+    border-top: 7px solid transparent;
+    border-bottom: 7px solid transparent;
+    border-left: 11px solid #fff;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+}
+
+.navi-story-bubble-label {
+    font-size: 0.75rem;
+    color: var(--navi-color-ink);
+    max-width: 76px;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.navi-story-bubble:focus-visible .navi-story-bubble-circle {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+}
+
 .navi-story-panel {
     width: 100%;
     height: 100%;

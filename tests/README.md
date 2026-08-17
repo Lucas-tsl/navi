@@ -17,6 +17,10 @@ merger un changement qui touche au comportement du module.
 - Le catalogue doit contenir :
   - un produit **en stock** (`NAVI_TEST_PRODUCT_IN_STOCK`, défaut `1`)
   - un produit **en rupture** (`NAVI_TEST_PRODUCT_OUT_OF_STOCK`, défaut `2`)
+  - optionnel : un produit avec **au moins une story** configurée depuis
+    l'onglet Navi (`NAVI_TEST_PRODUCT_WITH_STORY`, aucun défaut — la spec
+    `stories.spec.js` est entièrement `skip()`ée si cette variable n'est
+    pas définie)
 
   Ces identifiants sont propres au catalogue de l'environnement testé — à
   passer en variable d'environnement. Les tests concernés se `skip()`

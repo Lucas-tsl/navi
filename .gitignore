@@ -6,3 +6,6 @@
 tests/node_modules/
 tests/test-results/
 tests/playwright-report/
+
+# Vidéos uploadées par les marchands (stories) — jamais dans le dépôt
+navi/views/uploads/*.mp4

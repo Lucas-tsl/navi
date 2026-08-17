@@ -1,0 +1,20 @@
+# Dossier de stockage des vidéos MP4 uploadées (stories) — accessible
+# publiquement en lecture (nécessaire pour la lecture des vidéos), mais
+# aucun script ne doit jamais pouvoir s'y exécuter.
+<IfModule mod_php.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php7.c>
+    php_flag engine off
+</IfModule>
+
+<FilesMatch "\.(php|php\d|phtml|pl|py|jsp|asp|sh|cgi|htaccess)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+Options -Indexes

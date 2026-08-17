@@ -2,11 +2,11 @@
 <module>
     <name>navi</name>
     <displayName><![CDATA[Navi]]></displayName>
-    <version><![CDATA[1.0.0]]></version>
-    <description><![CDATA[Hub d'engagement flottant : consentement cookies (Google Consent Mode v2), accessibilité (taille du texte, contraste, curseur), et ajout au panier sticky sur les fiches produit, pilotés depuis un bouton unique.]]></description>
+    <version><![CDATA[1.1.0]]></version>
+    <description><![CDATA[Hub d'engagement flottant : consentement cookies (Google Consent Mode v2), accessibilité (taille du texte, contraste, curseur), ajout au panier sticky et bulles vidéo "stories" sur les fiches produit, pilotés depuis un bouton unique.]]></description>
     <author><![CDATA[Troteseil Lucas]]></author>
     <tab><![CDATA[front_office_features]]></tab>
-    <confirmUninstall><![CDATA[Supprimer ce module désactivera le bouton flottant et tous ses modules.]]></confirmUninstall>
+    <confirmUninstall><![CDATA[Supprimer ce module désactivera le bouton flottant, tous ses modules, et supprimera les stories enregistrées (vidéos incluses).]]></confirmUninstall>
     <is_configurable>1</is_configurable>
     <need_instance>0</need_instance>
     <limited_countries></limited_countries>

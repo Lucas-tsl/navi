@@ -1,5 +1,36 @@
 # Changelog
 
+## 1.1.0
+
+Gestion native des bulles vidéo "stories" — absorbe la fonctionnalité
+auparavant déléguée au module tiers `lstvideostory`, en corrigeant au
+passage les problèmes trouvés lors de son analyse :
+
+- Nouvelle table `navi_story` (jusqu'à 4 stories par produit), avec
+  `id_shop` dès la conception (`lstvideostory` n'avait pas cette colonne).
+- Onglet "Navi" sur la fiche produit du Back Office (`displayAdminProductsExtra`,
+  un seul hook — `lstvideostory` en utilisait deux en parallèle pour la
+  même fonction et affichait parfois la bulle deux fois côté front).
+- Sauvegarde exclusivement via un enregistrement produit réel
+  (`actionObjectProductAddAfter`/`UpdateAfter`) : **aucun contrôleur front
+  dédié**, contrairement à `lstvideostory` dont le contrôleur de sauvegarde
+  ne vérifiait jamais le jeton reçu (n'importe qui pouvait écraser les
+  stories d'un produit sans session admin). Ici, la sauvegarde est protégée
+  par la session employé et le jeton CSRF que PrestaShop applique lui-même
+  au formulaire produit.
+- Upload MP4 validé et limité en taille (20 Mo max, réellement appliqué —
+  `lstvideostory` ne vérifiait aucune taille), validation centralisée dans
+  une seule méthode (dupliquée à 3 endroits dans `lstvideostory`), plus de
+  repli permissif sur `application/octet-stream`.
+- Dossier d'upload durci (`.htaccess` interdisant toute exécution de
+  script) et entièrement nettoyé à la désinstallation, fichiers compris
+  (`lstvideostory` ne supprimait que sa table, laissait les vidéos
+  orphelines sur le disque).
+- Rendu front sur un seul hook (`displayAfterProductThumbs`), branché
+  directement sur le moteur `stories.js` (panneau desktop + plein écran
+  mobile) déjà présent depuis la 1.0.0 — plus d'interception DOM d'un
+  module tiers.
+
 ## 1.0.0
 
 Première version publique du module. Bootstrap du hub générique, sans
