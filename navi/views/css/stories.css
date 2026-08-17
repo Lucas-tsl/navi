@@ -15,7 +15,7 @@
 .navi-story-row {
     display: flex;
     flex-wrap: wrap;
-    justify-content: flex-end;
+    justify-content: center;
     gap: 24px;
     margin: 16px 0;
 }
@@ -39,7 +39,7 @@
     height: 64px;
     border-radius: 50%;
     overflow: hidden;
-    border: 2px solid var(--navi-color-accent);
+    border: var(--navi-story-border-width) solid var(--navi-color-accent);
     background: #000;
 }
 

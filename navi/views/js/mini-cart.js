@@ -4,6 +4,17 @@
     document.addEventListener('DOMContentLoaded', function () {
 
     if (typeof jQuery === 'undefined') return;
+
+    // Bascules "Afficher sur ordinateur/mobile" (Configurer > Mini-panier
+    // automatique) — même seuil que le reste du hub (480px, voir
+    // views/css/core.css). Pas de masquage CSS possible ici (voir
+    // navi.php::hookActionFrontControllerSetMedia) : le comportement
+    // entier ne doit simplement jamais s'activer sur la largeur exclue.
+    var miniCartConfig = window.naviMiniCartConfig || { showOnDesktop: true, showOnMobile: true };
+    var isMobileViewport = window.matchMedia('(max-width: 480px)').matches;
+    if (isMobileViewport && !miniCartConfig.showOnMobile) return;
+    if (!isMobileViewport && !miniCartConfig.showOnDesktop) return;
+
     var $ = jQuery;
 
     // ============================================================

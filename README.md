@@ -22,6 +22,9 @@ widgets indépendants.
 - ✅ Mini-panier automatique (optionnel, désactivé par défaut).
 - ✅ Apparence personnalisable depuis le Back Office (couleur d'accent,
   arrondi des boutons, arrondi de l'image produit).
+- ✅ Visibilité par fonctionnalité et par appareil ("Afficher sur
+  ordinateur"/"Afficher sur mobile", indépendamment pour chaque
+  fonctionnalité), titre et bordure des bulles stories personnalisables.
 
 ## Installation
 

@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.3.0
+
+- **Visibilité par fonctionnalité** : chaque fonctionnalité pilotée depuis
+  le bouton flottant (cookies, accessibilité, panier sticky, stories,
+  mini-panier) a maintenant ses propres bascules "Afficher sur ordinateur"
+  / "Afficher sur mobile" dans son propre bloc du Configure. Activées par
+  défaut (aucun changement de comportement tant que rien n'est désactivé).
+- **Stories** : nouveau bloc dédié — afficher ou non le titre de la bulle,
+  épaisseur de sa bordure (px), en plus des bascules de visibilité.
+  Bulles réalignées au centre de la rangée (`justify-content: center`).
+- Réglages back-office désormais répartis en 6 sections (Bannière cookies,
+  Accessibilité, Panier sticky, Stories, Mini-panier automatique,
+  Apparence).
+- `upgrade/upgrade-1.3.0.php` pour les installations déjà en place.
+
 ## 1.2.0
 
 - **Mini-panier automatique** : ouverture automatique du mini-panier après

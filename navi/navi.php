@@ -22,12 +22,41 @@ class Navi extends Module
     const DEFAULT_COLOR_ACCENT_DEEP = '#1e40af';
     const DEFAULT_RADIUS_BUTTON = '4';
     const DEFAULT_RADIUS_IMAGE = '4';
+    const DEFAULT_STORIES_BORDER_WIDTH = '2';
+
+    /**
+     * Bascules "Afficher sur ordinateur / mobile" partagées par toutes les
+     * fonctionnalités pilotées depuis le bouton flottant — un seul endroit
+     * pour ajouter/retirer une fonctionnalité de ce mécanisme (defaults à
+     * l'installation, suppression à la désinstallation, sauvegarde
+     * BO, génération des règles @media, voir getVisibilityStyleRules()).
+     * Le mini-panier (comportement, pas un élément du menu de l'engrenage)
+     * suit sa propre logique côté JS, voir NAVI_MINICART_SHOW_*.
+     */
+    const VISIBILITY_TOGGLES = [
+        'NAVI_COOKIE_SHOW_DESKTOP' => [
+            'mobileKey' => 'NAVI_COOKIE_SHOW_MOBILE',
+            'selector' => '#navi-cookie-banner, .navi-fab-item[data-item-id="cookie-consent"]',
+        ],
+        'NAVI_A11Y_SHOW_DESKTOP' => [
+            'mobileKey' => 'NAVI_A11Y_SHOW_MOBILE',
+            'selector' => '.navi-fab-item[data-item-id="accessibility"]',
+        ],
+        'NAVI_STICKYCART_SHOW_DESKTOP' => [
+            'mobileKey' => 'NAVI_STICKYCART_SHOW_MOBILE',
+            'selector' => '#navi-sticky-bar, .navi-fab-item[data-item-id="sticky-cart"]',
+        ],
+        'NAVI_STORIES_SHOW_DESKTOP' => [
+            'mobileKey' => 'NAVI_STORIES_SHOW_MOBILE',
+            'selector' => '.navi-story-row',
+        ],
+    ];
 
     public function __construct()
     {
         $this->name = 'navi';
         $this->tab = 'front_office_features';
-        $this->version = '1.2.0';
+        $this->version = '1.3.0';
         $this->author = 'Troteseil Lucas';
         $this->need_instance = 0;
         $this->bootstrap = true;
@@ -117,10 +146,19 @@ class Navi extends Module
         Configuration::updateValue('NAVI_COOKIE_LEGAL_URL', '');
         Configuration::updateValue('NAVI_COOKIE_LOGO_URL', $this->getDefaultLogoUrl());
         Configuration::updateValue('NAVI_MINICART_ENABLED', '0');
+        Configuration::updateValue('NAVI_MINICART_SHOW_DESKTOP', '1');
+        Configuration::updateValue('NAVI_MINICART_SHOW_MOBILE', '1');
         Configuration::updateValue('NAVI_COLOR_ACCENT', self::DEFAULT_COLOR_ACCENT);
         Configuration::updateValue('NAVI_COLOR_ACCENT_DEEP', self::DEFAULT_COLOR_ACCENT_DEEP);
         Configuration::updateValue('NAVI_RADIUS_BUTTON', self::DEFAULT_RADIUS_BUTTON);
         Configuration::updateValue('NAVI_RADIUS_IMAGE', self::DEFAULT_RADIUS_IMAGE);
+        Configuration::updateValue('NAVI_STORIES_SHOW_LABEL', '1');
+        Configuration::updateValue('NAVI_STORIES_BORDER_WIDTH', self::DEFAULT_STORIES_BORDER_WIDTH);
+
+        foreach (self::VISIBILITY_TOGGLES as $desktopKey => $info) {
+            Configuration::updateValue($desktopKey, '1');
+            Configuration::updateValue($info['mobileKey'], '1');
+        }
 
         return $ok;
     }
@@ -149,7 +187,7 @@ class Navi extends Module
 
     public function uninstall()
     {
-        return parent::uninstall()
+        $ok = parent::uninstall()
             && $this->uninstallStoriesTable()
             && $this->uninstallUploadDir()
             && Configuration::deleteByName('NAVI_COOKIE_TEXT')
@@ -157,10 +195,21 @@ class Navi extends Module
             && Configuration::deleteByName('NAVI_COOKIE_LEGAL_URL')
             && Configuration::deleteByName('NAVI_COOKIE_LOGO_URL')
             && Configuration::deleteByName('NAVI_MINICART_ENABLED')
+            && Configuration::deleteByName('NAVI_MINICART_SHOW_DESKTOP')
+            && Configuration::deleteByName('NAVI_MINICART_SHOW_MOBILE')
             && Configuration::deleteByName('NAVI_COLOR_ACCENT')
             && Configuration::deleteByName('NAVI_COLOR_ACCENT_DEEP')
             && Configuration::deleteByName('NAVI_RADIUS_BUTTON')
-            && Configuration::deleteByName('NAVI_RADIUS_IMAGE');
+            && Configuration::deleteByName('NAVI_RADIUS_IMAGE')
+            && Configuration::deleteByName('NAVI_STORIES_SHOW_LABEL')
+            && Configuration::deleteByName('NAVI_STORIES_BORDER_WIDTH');
+
+        foreach (self::VISIBILITY_TOGGLES as $desktopKey => $info) {
+            $ok = Configuration::deleteByName($desktopKey) && $ok;
+            $ok = Configuration::deleteByName($info['mobileKey']) && $ok;
+        }
+
+        return $ok;
     }
 
     /**
@@ -232,14 +281,56 @@ class Navi extends Module
             Configuration::updateValue('NAVI_COOKIE_LEGAL_URL', (string) Tools::getValue('NAVI_COOKIE_LEGAL_URL'));
             Configuration::updateValue('NAVI_COOKIE_LOGO_URL', (string) Tools::getValue('NAVI_COOKIE_LOGO_URL'));
             Configuration::updateValue('NAVI_MINICART_ENABLED', (int) Tools::getValue('NAVI_MINICART_ENABLED'));
+            Configuration::updateValue('NAVI_MINICART_SHOW_DESKTOP', (int) Tools::getValue('NAVI_MINICART_SHOW_DESKTOP'));
+            Configuration::updateValue('NAVI_MINICART_SHOW_MOBILE', (int) Tools::getValue('NAVI_MINICART_SHOW_MOBILE'));
             Configuration::updateValue('NAVI_COLOR_ACCENT', $this->sanitizeHexColor(Tools::getValue('NAVI_COLOR_ACCENT'), self::DEFAULT_COLOR_ACCENT));
             Configuration::updateValue('NAVI_COLOR_ACCENT_DEEP', $this->sanitizeHexColor(Tools::getValue('NAVI_COLOR_ACCENT_DEEP'), self::DEFAULT_COLOR_ACCENT_DEEP));
             Configuration::updateValue('NAVI_RADIUS_BUTTON', max(0, (int) Tools::getValue('NAVI_RADIUS_BUTTON')));
             Configuration::updateValue('NAVI_RADIUS_IMAGE', max(0, (int) Tools::getValue('NAVI_RADIUS_IMAGE')));
+            Configuration::updateValue('NAVI_STORIES_SHOW_LABEL', (int) Tools::getValue('NAVI_STORIES_SHOW_LABEL'));
+            Configuration::updateValue('NAVI_STORIES_BORDER_WIDTH', max(0, (int) Tools::getValue('NAVI_STORIES_BORDER_WIDTH')));
+
+            foreach (self::VISIBILITY_TOGGLES as $desktopKey => $info) {
+                Configuration::updateValue($desktopKey, (int) Tools::getValue($desktopKey));
+                Configuration::updateValue($info['mobileKey'], (int) Tools::getValue($info['mobileKey']));
+            }
+
             $output .= $this->displayConfirmation($this->l('Réglages enregistrés.'));
         }
 
         return $output . $this->renderForm();
+    }
+
+    /**
+     * Paire de switches "Afficher sur ordinateur / mobile" partagée par
+     * toutes les fonctionnalités du menu de l'engrenage (voir
+     * self::VISIBILITY_TOGGLES) — évite de répéter la même définition de
+     * champs 4 fois.
+     */
+    private function getVisibilityInputs($desktopKey, $mobileKey)
+    {
+        return [
+            [
+                'type' => 'switch',
+                'label' => $this->l('Afficher sur ordinateur'),
+                'name' => $desktopKey,
+                'is_bool' => true,
+                'values' => [
+                    ['id' => $desktopKey . '_on', 'value' => 1, 'label' => $this->l('Oui')],
+                    ['id' => $desktopKey . '_off', 'value' => 0, 'label' => $this->l('Non')],
+                ],
+            ],
+            [
+                'type' => 'switch',
+                'label' => $this->l('Afficher sur mobile'),
+                'name' => $mobileKey,
+                'is_bool' => true,
+                'values' => [
+                    ['id' => $mobileKey . '_on', 'value' => 1, 'label' => $this->l('Oui')],
+                    ['id' => $mobileKey . '_off', 'value' => 0, 'label' => $this->l('Non')],
+                ],
+            ],
+        ];
     }
 
     private function renderForm()
@@ -250,7 +341,7 @@ class Navi extends Module
                     'title' => $this->l('Bannière cookies'),
                     'icon' => 'icon-cogs',
                 ],
-                'input' => [
+                'input' => array_merge([
                     [
                         'type' => 'text',
                         'label' => $this->l('URL du logo'),
@@ -273,7 +364,64 @@ class Navi extends Module
                         'label' => $this->l('URL mentions légales'),
                         'name' => 'NAVI_COOKIE_LEGAL_URL',
                     ],
+                ], $this->getVisibilityInputs('NAVI_COOKIE_SHOW_DESKTOP', 'NAVI_COOKIE_SHOW_MOBILE')),
+                'submit' => [
+                    'title' => $this->l('Enregistrer'),
                 ],
+            ],
+        ];
+
+        $accessibilityForm = [
+            'form' => [
+                'legend' => [
+                    'title' => $this->l('Accessibilité'),
+                    'icon' => 'icon-universal-access',
+                ],
+                'input' => $this->getVisibilityInputs('NAVI_A11Y_SHOW_DESKTOP', 'NAVI_A11Y_SHOW_MOBILE'),
+                'submit' => [
+                    'title' => $this->l('Enregistrer'),
+                ],
+            ],
+        ];
+
+        $stickyCartForm = [
+            'form' => [
+                'legend' => [
+                    'title' => $this->l('Panier sticky'),
+                    'icon' => 'icon-shopping-cart',
+                ],
+                'input' => $this->getVisibilityInputs('NAVI_STICKYCART_SHOW_DESKTOP', 'NAVI_STICKYCART_SHOW_MOBILE'),
+                'submit' => [
+                    'title' => $this->l('Enregistrer'),
+                ],
+            ],
+        ];
+
+        $storiesForm = [
+            'form' => [
+                'legend' => [
+                    'title' => $this->l('Stories'),
+                    'icon' => 'icon-video-camera',
+                ],
+                'input' => array_merge([
+                    [
+                        'type' => 'switch',
+                        'label' => $this->l('Afficher le titre de la bulle'),
+                        'name' => 'NAVI_STORIES_SHOW_LABEL',
+                        'is_bool' => true,
+                        'values' => [
+                            ['id' => 'stories_label_on', 'value' => 1, 'label' => $this->l('Oui')],
+                            ['id' => 'stories_label_off', 'value' => 0, 'label' => $this->l('Non')],
+                        ],
+                    ],
+                    [
+                        'type' => 'text',
+                        'label' => $this->l('Épaisseur de la bordure (px)'),
+                        'name' => 'NAVI_STORIES_BORDER_WIDTH',
+                        'suffix' => 'px',
+                        'desc' => $this->l('0 = pas de bordure.'),
+                    ],
+                ], $this->getVisibilityInputs('NAVI_STORIES_SHOW_DESKTOP', 'NAVI_STORIES_SHOW_MOBILE')),
                 'submit' => [
                     'title' => $this->l('Enregistrer'),
                 ],
@@ -284,9 +432,9 @@ class Navi extends Module
             'form' => [
                 'legend' => [
                     'title' => $this->l('Mini-panier automatique'),
-                    'icon' => 'icon-shopping-cart',
+                    'icon' => 'icon-shopping-basket',
                 ],
-                'input' => [
+                'input' => array_merge([
                     [
                         'type' => 'switch',
                         'label' => $this->l('Ouverture automatique du mini-panier'),
@@ -298,7 +446,7 @@ class Navi extends Module
                             ['id' => 'minicart_off', 'value' => 0, 'label' => $this->l('Désactivé')],
                         ],
                     ],
-                ],
+                ], $this->getVisibilityInputs('NAVI_MINICART_SHOW_DESKTOP', 'NAVI_MINICART_SHOW_MOBILE')),
                 'submit' => [
                     'title' => $this->l('Enregistrer'),
                 ],
@@ -356,7 +504,7 @@ class Navi extends Module
             . '&configure=' . $this->name . '&tab_module=' . $this->tab . '&module_name=' . $this->name;
         $helper->token = Tools::getAdminTokenLite('AdminModules');
 
-        $helper->fields_value = [
+        $fieldsValue = [
             'NAVI_COOKIE_LOGO_URL' => Configuration::get('NAVI_COOKIE_LOGO_URL'),
             'NAVI_COOKIE_TEXT' => Configuration::get('NAVI_COOKIE_TEXT'),
             'NAVI_COOKIE_PRIVACY_URL' => Configuration::get('NAVI_COOKIE_PRIVACY_URL'),
@@ -366,9 +514,27 @@ class Navi extends Module
             'NAVI_COLOR_ACCENT_DEEP' => Configuration::get('NAVI_COLOR_ACCENT_DEEP') ?: self::DEFAULT_COLOR_ACCENT_DEEP,
             'NAVI_RADIUS_BUTTON' => Configuration::get('NAVI_RADIUS_BUTTON') !== false ? Configuration::get('NAVI_RADIUS_BUTTON') : self::DEFAULT_RADIUS_BUTTON,
             'NAVI_RADIUS_IMAGE' => Configuration::get('NAVI_RADIUS_IMAGE') !== false ? Configuration::get('NAVI_RADIUS_IMAGE') : self::DEFAULT_RADIUS_IMAGE,
+            'NAVI_STORIES_SHOW_LABEL' => (bool) Configuration::get('NAVI_STORIES_SHOW_LABEL'),
+            'NAVI_STORIES_BORDER_WIDTH' => Configuration::get('NAVI_STORIES_BORDER_WIDTH') !== false ? Configuration::get('NAVI_STORIES_BORDER_WIDTH') : self::DEFAULT_STORIES_BORDER_WIDTH,
         ];
 
-        return $helper->generateForm([$fieldsForm, $miniCartForm, $appearanceForm]);
+        foreach (self::VISIBILITY_TOGGLES as $desktopKey => $info) {
+            $fieldsValue[$desktopKey] = (bool) Configuration::get($desktopKey);
+            $fieldsValue[$info['mobileKey']] = (bool) Configuration::get($info['mobileKey']);
+        }
+        $fieldsValue['NAVI_MINICART_SHOW_DESKTOP'] = (bool) Configuration::get('NAVI_MINICART_SHOW_DESKTOP');
+        $fieldsValue['NAVI_MINICART_SHOW_MOBILE'] = (bool) Configuration::get('NAVI_MINICART_SHOW_MOBILE');
+
+        $helper->fields_value = $fieldsValue;
+
+        return $helper->generateForm([
+            $fieldsForm,
+            $accessibilityForm,
+            $stickyCartForm,
+            $storiesForm,
+            $miniCartForm,
+            $appearanceForm,
+        ]);
     }
 
     /**
@@ -406,30 +572,52 @@ class Navi extends Module
                 "analytics_storage": "' . ($statsGranted ? 'granted' : 'denied') . '",
                 "wait_for_update": ' . (int) $waitForUpdate . '
             });
-        </script>' . $this->getAppearanceStyleTag();
+        </script>' . $this->getConfigStyleTag();
     }
 
     /**
-     * Couleurs/arrondis configurés depuis Modules > Navi > Configurer >
-     * Apparence, réinjectés en variables CSS. `html:root` (pas `:root`
-     * seul) : specificité (0,1,1) contre (0,1,0) pour `:root` — garantit
-     * que ce bloc l'emporte sur les valeurs par défaut de core.css quel
-     * que soit l'ordre relatif des deux dans le <head> final (non garanti
-     * par PrestaShop/le thème).
+     * Couleurs/arrondis/visibilité configurés depuis Modules > Navi >
+     * Configurer, réinjectés en CSS à chaque page. Deux mécanismes :
+     * - variables CSS sur `html:root` (pas `:root` seul) : spécificité
+     *   (0,1,1) contre (0,1,0) pour `:root` seul — garantit que ce bloc
+     *   l'emporte sur les valeurs par défaut de core.css quel que soit
+     *   l'ordre relatif des deux dans le <head> final (non garanti par
+     *   PrestaShop/le thème) ;
+     * - règles `@media` avec `!important` pour les bascules
+     *   "Afficher sur ordinateur/mobile" (self::VISIBILITY_TOGGLES) : ici
+     *   on veut un masquage inconditionnel, pas une valeur par défaut
+     *   surchageable, donc pas besoin du même mécanisme de spécificité.
      */
-    private function getAppearanceStyleTag()
+    private function getConfigStyleTag()
     {
         $accent = $this->sanitizeHexColor(Configuration::get('NAVI_COLOR_ACCENT'), self::DEFAULT_COLOR_ACCENT);
         $accentDeep = $this->sanitizeHexColor(Configuration::get('NAVI_COLOR_ACCENT_DEEP'), self::DEFAULT_COLOR_ACCENT_DEEP);
         $radiusButton = max(0, (int) (Configuration::get('NAVI_RADIUS_BUTTON') !== false ? Configuration::get('NAVI_RADIUS_BUTTON') : self::DEFAULT_RADIUS_BUTTON));
         $radiusImage = max(0, (int) (Configuration::get('NAVI_RADIUS_IMAGE') !== false ? Configuration::get('NAVI_RADIUS_IMAGE') : self::DEFAULT_RADIUS_IMAGE));
+        $storiesBorderWidth = max(0, (int) (Configuration::get('NAVI_STORIES_BORDER_WIDTH') !== false ? Configuration::get('NAVI_STORIES_BORDER_WIDTH') : self::DEFAULT_STORIES_BORDER_WIDTH));
 
-        return '<style>html:root{'
+        $css = 'html:root{'
             . '--navi-color-accent:' . $accent . ';'
             . '--navi-color-accent-deep:' . $accentDeep . ';'
             . '--navi-radius-button:' . $radiusButton . 'px;'
             . '--navi-radius-image:' . $radiusImage . 'px;'
-            . '}</style>';
+            . '--navi-story-border-width:' . $storiesBorderWidth . 'px;'
+            . '}';
+
+        if (!Configuration::get('NAVI_STORIES_SHOW_LABEL')) {
+            $css .= 'html .navi-story-bubble-label{display:none}';
+        }
+
+        foreach (self::VISIBILITY_TOGGLES as $desktopKey => $info) {
+            if (!Configuration::get($desktopKey)) {
+                $css .= '@media (min-width:481px){' . $info['selector'] . '{display:none!important}}';
+            }
+            if (!Configuration::get($info['mobileKey'])) {
+                $css .= '@media (max-width:480px){' . $info['selector'] . '{display:none!important}}';
+            }
+        }
+
+        return '<style>' . $css . '</style>';
     }
 
     /**
@@ -481,6 +669,18 @@ class Navi extends Module
                 'modules/' . $this->name . '/views/js/mini-cart.js',
                 ['position' => 'bottom', 'priority' => 200]
             );
+            // Contrairement aux autres bascules "Afficher sur ordinateur/
+            // mobile" (gérées en CSS, voir getConfigStyleTag()), le
+            // mini-panier n'a pas d'élément DOM propre à masquer — c'est un
+            // comportement (ouverture automatique) sur l'élément panier
+            // natif du thème, jamais à masquer lui-même. Gating côté JS
+            // via matchMedia à la place.
+            Media::addJsDef([
+                'naviMiniCartConfig' => [
+                    'showOnDesktop' => (bool) Configuration::get('NAVI_MINICART_SHOW_DESKTOP'),
+                    'showOnMobile' => (bool) Configuration::get('NAVI_MINICART_SHOW_MOBILE'),
+                ],
+            ]);
         }
 
         $stories = [];

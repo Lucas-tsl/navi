@@ -21,11 +21,12 @@
     --navi-color-surface: #fff;
     --navi-color-success: #1a7a4c;
 
-    /* Surchargées à l'exécution depuis Modules > Navi > Configurer >
-       Apparence (voir Navi::getAppearanceStyleTag() dans navi.php) — ces
-       valeurs ne servent que de repli si ce bloc ne s'est pas chargé. */
+    /* Surchargées à l'exécution depuis Modules > Navi > Configurer (voir
+       Navi::getConfigStyleTag() dans navi.php) — ces valeurs ne servent
+       que de repli si ce bloc ne s'est pas chargé. */
     --navi-radius-button: 4px;
     --navi-radius-image: 4px;
+    --navi-story-border-width: 2px;
 }
 
 /* Lien d'évitement (WCAG 2.4.1). */

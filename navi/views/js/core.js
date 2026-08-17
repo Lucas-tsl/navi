@@ -100,6 +100,11 @@
                 btn.className = 'navi-fab-item';
                 btn.style.setProperty('--navi-index', String(index));
                 btn.setAttribute('role', 'menuitem');
+                // Consommé par les règles @media "Afficher sur
+                // ordinateur/mobile" injectées depuis navi.php (voir
+                // Navi::getConfigStyleTag()) pour masquer une entrée
+                // précise du menu selon la largeur d'écran.
+                btn.setAttribute('data-item-id', item.id);
                 btn.setAttribute('title', item.label);
                 btn.setAttribute('aria-label', item.label);
                 var icon = document.createElement('span');
