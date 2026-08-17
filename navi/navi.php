@@ -28,7 +28,7 @@ class Navi extends Module
     const DEFAULT_STORIES_CLOSE_BG = '#000000';
     const DEFAULT_STORIES_OVERLAY_BG = '#000000';
     const DEFAULT_FAB_POSITION = 'right';
-    const REPO_URL = 'https://github.com/Lucas-tsl/navi';
+    const REPO_URL = 'https://github.com/Lucas-tsl/navi-prestashop';
 
     const DEFAULT_STORIES_PHONE_PADDING = '10';
     const DEFAULT_STORIES_PHONE_WIDTH = '200';
@@ -68,7 +68,7 @@ class Navi extends Module
     {
         $this->name = 'navi';
         $this->tab = 'front_office_features';
-        $this->version = '1.5.1';
+        $this->version = '1.6.0';
         $this->author = 'Troteseil Lucas';
         $this->need_instance = 0;
         $this->bootstrap = true;
@@ -300,33 +300,51 @@ class Navi extends Module
         $this->ensureFullyInstalled();
 
         $output = '';
+        $confirmation = $this->displayConfirmation($this->l('Réglages enregistrés.'));
 
         if (Tools::isSubmit('submitNaviCookie')) {
             Configuration::updateValue('NAVI_COOKIE_TEXT', (string) Tools::getValue('NAVI_COOKIE_TEXT'));
             Configuration::updateValue('NAVI_COOKIE_PRIVACY_URL', (string) Tools::getValue('NAVI_COOKIE_PRIVACY_URL'));
             Configuration::updateValue('NAVI_COOKIE_LEGAL_URL', (string) Tools::getValue('NAVI_COOKIE_LEGAL_URL'));
             Configuration::updateValue('NAVI_COOKIE_LOGO_URL', (string) Tools::getValue('NAVI_COOKIE_LOGO_URL'));
-            Configuration::updateValue('NAVI_MINICART_ENABLED', (int) Tools::getValue('NAVI_MINICART_ENABLED'));
-            Configuration::updateValue('NAVI_MINICART_SHOW_DESKTOP', (int) Tools::getValue('NAVI_MINICART_SHOW_DESKTOP'));
-            Configuration::updateValue('NAVI_MINICART_SHOW_MOBILE', (int) Tools::getValue('NAVI_MINICART_SHOW_MOBILE'));
-            Configuration::updateValue('NAVI_COLOR_ACCENT', $this->sanitizeHexColor(Tools::getValue('NAVI_COLOR_ACCENT'), self::DEFAULT_COLOR_ACCENT));
-            Configuration::updateValue('NAVI_COLOR_ACCENT_DEEP', $this->sanitizeHexColor(Tools::getValue('NAVI_COLOR_ACCENT_DEEP'), self::DEFAULT_COLOR_ACCENT_DEEP));
-            Configuration::updateValue('NAVI_RADIUS_BUTTON', max(0, (int) Tools::getValue('NAVI_RADIUS_BUTTON')));
-            Configuration::updateValue('NAVI_RADIUS_IMAGE', max(0, (int) Tools::getValue('NAVI_RADIUS_IMAGE')));
+            $this->saveVisibilityToggle('NAVI_COOKIE_SHOW_DESKTOP', 'NAVI_COOKIE_SHOW_MOBILE');
+            $output .= $confirmation;
+        }
+
+        if (Tools::isSubmit('submitNaviA11y')) {
+            $this->saveVisibilityToggle('NAVI_A11Y_SHOW_DESKTOP', 'NAVI_A11Y_SHOW_MOBILE');
+            $output .= $confirmation;
+        }
+
+        if (Tools::isSubmit('submitNaviStickyCart')) {
+            $this->saveVisibilityToggle('NAVI_STICKYCART_SHOW_DESKTOP', 'NAVI_STICKYCART_SHOW_MOBILE');
+            $output .= $confirmation;
+        }
+
+        if (Tools::isSubmit('submitNaviStories')) {
             Configuration::updateValue('NAVI_STORIES_SHOW_LABEL', (int) Tools::getValue('NAVI_STORIES_SHOW_LABEL'));
             Configuration::updateValue('NAVI_STORIES_BORDER_WIDTH', max(0, (int) Tools::getValue('NAVI_STORIES_BORDER_WIDTH')));
             Configuration::updateValue('NAVI_STORIES_COLOR_PHONE_BG', $this->sanitizeHexColor(Tools::getValue('NAVI_STORIES_COLOR_PHONE_BG'), self::DEFAULT_STORIES_PHONE_BG));
             Configuration::updateValue('NAVI_STORIES_COLOR_CLOSE_ICON', $this->sanitizeHexColor(Tools::getValue('NAVI_STORIES_COLOR_CLOSE_ICON'), self::DEFAULT_STORIES_CLOSE_ICON));
             Configuration::updateValue('NAVI_STORIES_COLOR_CLOSE_BG', $this->sanitizeHexColor(Tools::getValue('NAVI_STORIES_COLOR_CLOSE_BG'), self::DEFAULT_STORIES_CLOSE_BG));
             Configuration::updateValue('NAVI_STORIES_COLOR_OVERLAY', $this->sanitizeHexColor(Tools::getValue('NAVI_STORIES_COLOR_OVERLAY'), self::DEFAULT_STORIES_OVERLAY_BG));
+            $this->saveVisibilityToggle('NAVI_STORIES_SHOW_DESKTOP', 'NAVI_STORIES_SHOW_MOBILE');
+            $output .= $confirmation;
+        }
+
+        if (Tools::isSubmit('submitNaviMiniCart')) {
+            Configuration::updateValue('NAVI_MINICART_ENABLED', (int) Tools::getValue('NAVI_MINICART_ENABLED'));
+            $this->saveVisibilityToggle('NAVI_MINICART_SHOW_DESKTOP', 'NAVI_MINICART_SHOW_MOBILE');
+            $output .= $confirmation;
+        }
+
+        if (Tools::isSubmit('submitNaviAppearance')) {
             Configuration::updateValue('NAVI_FAB_POSITION', in_array(Tools::getValue('NAVI_FAB_POSITION'), ['left', 'right'], true) ? Tools::getValue('NAVI_FAB_POSITION') : self::DEFAULT_FAB_POSITION);
-
-            foreach (self::VISIBILITY_TOGGLES as $desktopKey => $info) {
-                Configuration::updateValue($desktopKey, (int) Tools::getValue($desktopKey));
-                Configuration::updateValue($info['mobileKey'], (int) Tools::getValue($info['mobileKey']));
-            }
-
-            $output .= $this->displayConfirmation($this->l('Réglages enregistrés.'));
+            Configuration::updateValue('NAVI_COLOR_ACCENT', $this->sanitizeHexColor(Tools::getValue('NAVI_COLOR_ACCENT'), self::DEFAULT_COLOR_ACCENT));
+            Configuration::updateValue('NAVI_COLOR_ACCENT_DEEP', $this->sanitizeHexColor(Tools::getValue('NAVI_COLOR_ACCENT_DEEP'), self::DEFAULT_COLOR_ACCENT_DEEP));
+            Configuration::updateValue('NAVI_RADIUS_BUTTON', max(0, (int) Tools::getValue('NAVI_RADIUS_BUTTON')));
+            Configuration::updateValue('NAVI_RADIUS_IMAGE', max(0, (int) Tools::getValue('NAVI_RADIUS_IMAGE')));
+            $output .= $confirmation;
         }
 
         if (Tools::isSubmit('submitNaviVideoAppearance')) {
@@ -334,10 +352,135 @@ class Navi extends Module
             $phoneWidth = max(self::MIN_STORIES_PHONE_WIDTH, min(self::MAX_STORIES_PHONE_WIDTH, (int) Tools::getValue('NAVI_STORIES_PHONE_WIDTH')));
             Configuration::updateValue('NAVI_STORIES_PHONE_PADDING', $phonePadding);
             Configuration::updateValue('NAVI_STORIES_PHONE_WIDTH', $phoneWidth);
-            $output .= $this->displayConfirmation($this->l('Réglages enregistrés.'));
+            $output .= $confirmation;
         }
 
-        return $output . $this->getHelpBlock() . $this->getVideoAppearanceBlock() . $this->renderForm();
+        return $output . $this->renderTabs();
+    }
+
+    private function saveVisibilityToggle($desktopKey, $mobileKey)
+    {
+        Configuration::updateValue($desktopKey, (int) Tools::getValue($desktopKey));
+        Configuration::updateValue($mobileKey, (int) Tools::getValue($mobileKey));
+    }
+
+    /**
+     * Un onglet par fonctionnalité plutôt qu'un unique formulaire qui
+     * s'allonge à chaque réglage ajouté — chaque onglet est un <form>
+     * indépendant (son propre bouton "Enregistrer", voir getContent() pour
+     * le traitement de sa propre soumission) plutôt qu'un seul gros
+     * formulaire partagé : plus simple à faire cohabiter avec le
+     * mini-formulaire à curseurs de l'onglet Stories (voir
+     * getVideoAppearanceBlock()), et évite de tout renvoyer si un seul
+     * réglage change. `role="tablist"/"tab"/"tabpanel"` + synchronisation
+     * JS de `aria-selected` (voir le <script> en bas) : le plugin Bootstrap
+     * 3 de l'admin PrestaShop gère le visuel mais ne maintient pas cet
+     * attribut lui-même.
+     */
+    private function renderTabs()
+    {
+        $tabs = [
+            [
+                'id' => 'help',
+                'label' => $this->l('Aide'),
+                'icon' => 'icon-life-ring',
+                'content' => $this->getHelpBlock(),
+            ],
+            [
+                'id' => 'cookies',
+                'label' => $this->l('Cookies'),
+                'icon' => 'icon-cogs',
+                'content' => $this->renderCookieForm(),
+            ],
+            [
+                'id' => 'a11y',
+                'label' => $this->l('Accessibilité'),
+                'icon' => 'icon-universal-access',
+                'content' => $this->renderAccessibilityForm(),
+            ],
+            [
+                'id' => 'stickycart',
+                'label' => $this->l('Panier sticky'),
+                'icon' => 'icon-shopping-cart',
+                'content' => $this->renderStickyCartForm(),
+            ],
+            [
+                'id' => 'stories',
+                'label' => $this->l('Stories'),
+                'icon' => 'icon-video-camera',
+                'content' => $this->renderStoriesForm() . $this->getVideoAppearanceBlock(),
+            ],
+            [
+                'id' => 'minicart',
+                'label' => $this->l('Mini-panier'),
+                'icon' => 'icon-shopping-basket',
+                'content' => $this->renderMiniCartForm(),
+            ],
+            [
+                'id' => 'appearance',
+                'label' => $this->l('Apparence'),
+                'icon' => 'icon-paint-brush',
+                'content' => $this->renderAppearanceForm(),
+            ],
+        ];
+
+        $nav = '<ul class="nav nav-tabs" role="tablist">';
+        $panes = '<div class="tab-content">';
+
+        foreach ($tabs as $index => $tab) {
+            $isActive = $index === 0;
+            $paneId = 'navi-tab-' . $tab['id'];
+
+            $nav .= '<li role="presentation"' . ($isActive ? ' class="active"' : '') . '>'
+                . '<a href="#' . $paneId . '" data-toggle="tab" role="tab" aria-controls="' . $paneId . '" aria-selected="' . ($isActive ? 'true' : 'false') . '">'
+                . '<i class="' . $tab['icon'] . '"></i> ' . $tab['label']
+                . '</a></li>';
+
+            $panes .= '<div class="tab-pane' . ($isActive ? ' active' : '') . '" id="' . $paneId . '" role="tabpanel">'
+                . $tab['content']
+                . '</div>';
+        }
+
+        $nav .= '</ul>';
+        $panes .= '</div>';
+
+        return '<style>.navi-config-tabs .tab-content { padding-top: 20px; } .navi-config-tabs .nav-tabs > li > a i { margin-right: 4px; }</style>'
+            . '<div class="navi-config-tabs">' . $nav . $panes . '</div>'
+            . '<script>
+                (function () {
+                    if (typeof jQuery === "undefined") return;
+                    jQuery(".navi-config-tabs a[data-toggle=\'tab\']").on("shown.bs.tab", function (e) {
+                        jQuery(e.target).attr("aria-selected", "true");
+                        jQuery(e.relatedTarget).attr("aria-selected", "false");
+                    });
+                })();
+            </script>';
+    }
+
+    private function newHelperForm($submitAction)
+    {
+        $helper = new HelperForm();
+        $helper->show_toolbar = false;
+        $helper->table = $this->table;
+        $helper->module = $this;
+        $helper->default_form_language = $this->context->language->id;
+        $helper->identifier = $this->identifier;
+        $helper->submit_action = $submitAction;
+        $helper->currentIndex = $this->context->link->getAdminLink('AdminModules', false)
+            . '&configure=' . $this->name . '&tab_module=' . $this->tab . '&module_name=' . $this->name;
+        $helper->token = Tools::getAdminTokenLite('AdminModules');
+
+        return $helper;
+    }
+
+    private function visibilityFieldsValue($desktopKey)
+    {
+        $mobileKey = self::VISIBILITY_TOGGLES[$desktopKey]['mobileKey'];
+
+        return [
+            $desktopKey => (bool) Configuration::get($desktopKey),
+            $mobileKey => (bool) Configuration::get($mobileKey),
+        ];
     }
 
     /**
@@ -432,7 +575,7 @@ class Navi extends Module
         ];
     }
 
-    private function renderForm()
+    private function renderCookieForm()
     {
         $fieldsForm = [
             'form' => [
@@ -470,6 +613,19 @@ class Navi extends Module
             ],
         ];
 
+        $helper = $this->newHelperForm('submitNaviCookie');
+        $helper->fields_value = array_merge([
+            'NAVI_COOKIE_LOGO_URL' => Configuration::get('NAVI_COOKIE_LOGO_URL'),
+            'NAVI_COOKIE_TEXT' => Configuration::get('NAVI_COOKIE_TEXT'),
+            'NAVI_COOKIE_PRIVACY_URL' => Configuration::get('NAVI_COOKIE_PRIVACY_URL'),
+            'NAVI_COOKIE_LEGAL_URL' => Configuration::get('NAVI_COOKIE_LEGAL_URL'),
+        ], $this->visibilityFieldsValue('NAVI_COOKIE_SHOW_DESKTOP'));
+
+        return $helper->generateForm([$fieldsForm]);
+    }
+
+    private function renderAccessibilityForm()
+    {
         $accessibilityForm = [
             'form' => [
                 'legend' => [
@@ -483,6 +639,14 @@ class Navi extends Module
             ],
         ];
 
+        $helper = $this->newHelperForm('submitNaviA11y');
+        $helper->fields_value = $this->visibilityFieldsValue('NAVI_A11Y_SHOW_DESKTOP');
+
+        return $helper->generateForm([$accessibilityForm]);
+    }
+
+    private function renderStickyCartForm()
+    {
         $stickyCartForm = [
             'form' => [
                 'legend' => [
@@ -496,6 +660,14 @@ class Navi extends Module
             ],
         ];
 
+        $helper = $this->newHelperForm('submitNaviStickyCart');
+        $helper->fields_value = $this->visibilityFieldsValue('NAVI_STICKYCART_SHOW_DESKTOP');
+
+        return $helper->generateForm([$stickyCartForm]);
+    }
+
+    private function renderStoriesForm()
+    {
         $storiesForm = [
             'form' => [
                 'legend' => [
@@ -547,6 +719,21 @@ class Navi extends Module
             ],
         ];
 
+        $helper = $this->newHelperForm('submitNaviStories');
+        $helper->fields_value = array_merge([
+            'NAVI_STORIES_SHOW_LABEL' => (bool) Configuration::get('NAVI_STORIES_SHOW_LABEL'),
+            'NAVI_STORIES_BORDER_WIDTH' => Configuration::get('NAVI_STORIES_BORDER_WIDTH') !== false ? Configuration::get('NAVI_STORIES_BORDER_WIDTH') : self::DEFAULT_STORIES_BORDER_WIDTH,
+            'NAVI_STORIES_COLOR_PHONE_BG' => Configuration::get('NAVI_STORIES_COLOR_PHONE_BG') ?: self::DEFAULT_STORIES_PHONE_BG,
+            'NAVI_STORIES_COLOR_CLOSE_ICON' => Configuration::get('NAVI_STORIES_COLOR_CLOSE_ICON') ?: self::DEFAULT_STORIES_CLOSE_ICON,
+            'NAVI_STORIES_COLOR_CLOSE_BG' => Configuration::get('NAVI_STORIES_COLOR_CLOSE_BG') ?: self::DEFAULT_STORIES_CLOSE_BG,
+            'NAVI_STORIES_COLOR_OVERLAY' => Configuration::get('NAVI_STORIES_COLOR_OVERLAY') ?: self::DEFAULT_STORIES_OVERLAY_BG,
+        ], $this->visibilityFieldsValue('NAVI_STORIES_SHOW_DESKTOP'));
+
+        return $helper->generateForm([$storiesForm]);
+    }
+
+    private function renderMiniCartForm()
+    {
         $miniCartForm = [
             'form' => [
                 'legend' => [
@@ -572,6 +759,18 @@ class Navi extends Module
             ],
         ];
 
+        $helper = $this->newHelperForm('submitNaviMiniCart');
+        $helper->fields_value = [
+            'NAVI_MINICART_ENABLED' => (bool) Configuration::get('NAVI_MINICART_ENABLED'),
+            'NAVI_MINICART_SHOW_DESKTOP' => (bool) Configuration::get('NAVI_MINICART_SHOW_DESKTOP'),
+            'NAVI_MINICART_SHOW_MOBILE' => (bool) Configuration::get('NAVI_MINICART_SHOW_MOBILE'),
+        ];
+
+        return $helper->generateForm([$miniCartForm]);
+    }
+
+    private function renderAppearanceForm()
+    {
         $appearanceForm = [
             'form' => [
                 'legend' => [
@@ -625,53 +824,16 @@ class Navi extends Module
             ],
         ];
 
-        $helper = new HelperForm();
-        $helper->show_toolbar = false;
-        $helper->table = $this->table;
-        $helper->module = $this;
-        $helper->default_form_language = $this->context->language->id;
-        $helper->identifier = $this->identifier;
-        $helper->submit_action = 'submitNaviCookie';
-        $helper->currentIndex = $this->context->link->getAdminLink('AdminModules', false)
-            . '&configure=' . $this->name . '&tab_module=' . $this->tab . '&module_name=' . $this->name;
-        $helper->token = Tools::getAdminTokenLite('AdminModules');
-
-        $fieldsValue = [
-            'NAVI_COOKIE_LOGO_URL' => Configuration::get('NAVI_COOKIE_LOGO_URL'),
-            'NAVI_COOKIE_TEXT' => Configuration::get('NAVI_COOKIE_TEXT'),
-            'NAVI_COOKIE_PRIVACY_URL' => Configuration::get('NAVI_COOKIE_PRIVACY_URL'),
-            'NAVI_COOKIE_LEGAL_URL' => Configuration::get('NAVI_COOKIE_LEGAL_URL'),
-            'NAVI_MINICART_ENABLED' => (bool) Configuration::get('NAVI_MINICART_ENABLED'),
+        $helper = $this->newHelperForm('submitNaviAppearance');
+        $helper->fields_value = [
+            'NAVI_FAB_POSITION' => Configuration::get('NAVI_FAB_POSITION') ?: self::DEFAULT_FAB_POSITION,
             'NAVI_COLOR_ACCENT' => Configuration::get('NAVI_COLOR_ACCENT') ?: self::DEFAULT_COLOR_ACCENT,
             'NAVI_COLOR_ACCENT_DEEP' => Configuration::get('NAVI_COLOR_ACCENT_DEEP') ?: self::DEFAULT_COLOR_ACCENT_DEEP,
             'NAVI_RADIUS_BUTTON' => Configuration::get('NAVI_RADIUS_BUTTON') !== false ? Configuration::get('NAVI_RADIUS_BUTTON') : self::DEFAULT_RADIUS_BUTTON,
             'NAVI_RADIUS_IMAGE' => Configuration::get('NAVI_RADIUS_IMAGE') !== false ? Configuration::get('NAVI_RADIUS_IMAGE') : self::DEFAULT_RADIUS_IMAGE,
-            'NAVI_STORIES_SHOW_LABEL' => (bool) Configuration::get('NAVI_STORIES_SHOW_LABEL'),
-            'NAVI_STORIES_BORDER_WIDTH' => Configuration::get('NAVI_STORIES_BORDER_WIDTH') !== false ? Configuration::get('NAVI_STORIES_BORDER_WIDTH') : self::DEFAULT_STORIES_BORDER_WIDTH,
-            'NAVI_STORIES_COLOR_PHONE_BG' => Configuration::get('NAVI_STORIES_COLOR_PHONE_BG') ?: self::DEFAULT_STORIES_PHONE_BG,
-            'NAVI_STORIES_COLOR_CLOSE_ICON' => Configuration::get('NAVI_STORIES_COLOR_CLOSE_ICON') ?: self::DEFAULT_STORIES_CLOSE_ICON,
-            'NAVI_STORIES_COLOR_CLOSE_BG' => Configuration::get('NAVI_STORIES_COLOR_CLOSE_BG') ?: self::DEFAULT_STORIES_CLOSE_BG,
-            'NAVI_STORIES_COLOR_OVERLAY' => Configuration::get('NAVI_STORIES_COLOR_OVERLAY') ?: self::DEFAULT_STORIES_OVERLAY_BG,
-            'NAVI_FAB_POSITION' => Configuration::get('NAVI_FAB_POSITION') ?: self::DEFAULT_FAB_POSITION,
         ];
 
-        foreach (self::VISIBILITY_TOGGLES as $desktopKey => $info) {
-            $fieldsValue[$desktopKey] = (bool) Configuration::get($desktopKey);
-            $fieldsValue[$info['mobileKey']] = (bool) Configuration::get($info['mobileKey']);
-        }
-        $fieldsValue['NAVI_MINICART_SHOW_DESKTOP'] = (bool) Configuration::get('NAVI_MINICART_SHOW_DESKTOP');
-        $fieldsValue['NAVI_MINICART_SHOW_MOBILE'] = (bool) Configuration::get('NAVI_MINICART_SHOW_MOBILE');
-
-        $helper->fields_value = $fieldsValue;
-
-        return $helper->generateForm([
-            $fieldsForm,
-            $accessibilityForm,
-            $stickyCartForm,
-            $storiesForm,
-            $miniCartForm,
-            $appearanceForm,
-        ]);
+        return $helper->generateForm([$appearanceForm]);
     }
 
     /**

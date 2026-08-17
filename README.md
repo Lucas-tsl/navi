@@ -31,6 +31,8 @@ widgets indépendants.
   d'issue pré-remplie).
 - ✅ Épaisseur du cadre et taille du mockup de téléphone des stories
   réglables via curseurs gradués, avec aperçu en direct.
+- ✅ Configure organisé en onglets (un par fonctionnalité), chacun avec
+  son propre formulaire.
 
 ## Installation
 
@@ -105,8 +107,8 @@ vraie instance PrestaShop (pas branchée en CI, à lancer manuellement).
 
 - Panier sticky : pas de sélecteur de variation/déclinaison pour les
   produits avec combinaisons — voir
-  [issue #1](https://github.com/Lucas-tsl/navi/issues/1), contributions
-  bienvenues.
+  [issue #1](https://github.com/Lucas-tsl/navi-prestashop/issues/1),
+  contributions bienvenues.
 - Traductions : les chaînes passent par `$this->l()`/`{l}` mais aucun
   fichier `translations/<iso>.php` n'existe encore — le module est
   aujourd'hui francophone par défaut.

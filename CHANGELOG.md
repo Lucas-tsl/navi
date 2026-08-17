@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.6.0
+
+- **Configure réorganisé en onglets** : un onglet par fonctionnalité (Aide,
+  Cookies, Accessibilité, Panier sticky, Stories, Mini-panier, Apparence)
+  au lieu d'un unique formulaire qui s'allongeait à chaque réglage ajouté.
+  Chaque onglet est un formulaire indépendant avec son propre bouton
+  "Enregistrer" — modifier un réglage ne renvoie plus tous les autres.
+  Navigation par onglets avec `role="tablist"/"tab"/"tabpanel"` et
+  synchronisation de `aria-selected` au clic.
+- Dépôt GitHub renommé `navi` → `navi-prestashop` (l'auteur prépare un
+  dépôt séparé pour une solution WordPress) : toutes les URLs internes du
+  module (lien Documentation, création d'issue) mises à jour en
+  conséquence.
+
 ## 1.5.1
 
 Correction du curseur "épaisseur" ajouté en 1.5.0 : contrôlait par erreur
