@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.3
+
+- Libellé des bulles stories : passe à la ligne au lieu d'être tronqué
+  ("..." ou coupé net) quand il dépasse la largeur de la bulle — même
+  règle sur mobile et desktop, la largeur disponible fait le reste.
+
 ## 1.4.2
 
 - Retiré le décalage `bottom: 45px` du panneau stories ajouté en 1.4.1 —

@@ -70,14 +70,19 @@
     filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
 }
 
+/* Retour à la ligne plutôt que troncature ("..." ou coupé net) : un
+   libellé plus long que la largeur de la bulle passe sur 2 lignes (voire
+   plus) au lieu de perdre une partie de son texte — même règle sur mobile
+   et desktop, la largeur disponible fait naturellement le reste. */
 .navi-story-bubble-label {
     font-size: 0.75rem;
+    line-height: 1.25;
     color: var(--navi-color-ink);
     max-width: 76px;
     text-align: center;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    white-space: normal;
+    overflow-wrap: break-word;
+    word-break: break-word;
 }
 
 .navi-story-bubble:focus-visible .navi-story-bubble-circle {
