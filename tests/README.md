@@ -15,8 +15,8 @@ merger un changement qui touche au comportement du module.
 - Une instance PrestaShop avec `navi` installé et actif, accessible en HTTP
   (par défaut `http://localhost:8080`).
 - Le catalogue doit contenir :
-  - un produit **en stock** (`NAVI_TEST_PRODUCT_IN_STOCK`, défaut `1`)
-  - un produit **en rupture** (`NAVI_TEST_PRODUCT_OUT_OF_STOCK`, défaut `2`)
+  - un produit **en stock** (`NAVI_TEST_PRODUCT_IN_STOCK`, défaut `134`)
+  - un produit **en rupture** (`NAVI_TEST_PRODUCT_OUT_OF_STOCK`, défaut `137`)
   - optionnel : un produit avec **au moins une story** configurée depuis
     l'onglet Navi (`NAVI_TEST_PRODUCT_WITH_STORY`, aucun défaut — la spec
     `stories.spec.js` est entièrement `skip()`ée si cette variable n'est
