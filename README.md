@@ -209,7 +209,9 @@ vraie instance PrestaShop (pas branchée en CI, à lancer manuellement).
   contributions bienvenues.
 - Traductions : les chaînes passent par `$this->l()`/`{l}` mais aucun
   fichier `translations/<iso>.php` n'existe encore — le module est
-  aujourd'hui francophone par défaut.
+  aujourd'hui francophone par défaut. Voir
+  [issue #2](https://github.com/Lucas-tsl/navi-prestashop/issues/2),
+  contributions bienvenues.
 - Multiboutique : non testé/optimisé spécifiquement.
 
 ## Licence
